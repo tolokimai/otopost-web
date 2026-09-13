@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
 
-_EMAIL_RE = re.compile(r"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class RegisterRequest(BaseModel):
