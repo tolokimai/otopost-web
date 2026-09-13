@@ -17,6 +17,9 @@ export default function Header() {
         </span>
       </Link>
       <div className="flex items-center gap-3 text-xs">
+        <Link href="/pricing" className="text-slate-300 hover:text-white">
+          Harga
+        </Link>
         {loading ? null : user ? (
           <>
             <Link href="/account" className="text-slate-300 hover:text-white">
