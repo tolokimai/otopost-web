@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import Header from "@/components/Header";
 import SegmentCard from "@/components/podcast/SegmentCard";
 import ClipCard from "@/components/podcast/ClipCard";
+import { useAuth } from "@/lib/auth";
 import {
   api,
   type TranscriptResponse,
@@ -37,6 +41,10 @@ function fmtDur(sec?: number | null): string {
 }
 
 export default function StudioPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
+
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +60,12 @@ export default function StudioPage() {
   const [reframe, setReframe] = useState(true);
 
   const selectedCount = segments.filter((s) => s.selected).length;
+
+  useEffect(() => {
+    if (requireAuth && !authLoading && !user) {
+      router.replace("/login?next=/studio");
+    }
+  }, [requireAuth, authLoading, user, router]);
 
   async function handleTranscript() {
     if (!url.trim()) {
@@ -166,6 +180,20 @@ export default function StudioPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 pb-24">
       <Header />
+
+      {!user && !authLoading ? (
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+          Kamu belum masuk.{" "}
+          <Link href="/login?next=/studio" className="text-brand-accent">
+            Masuk
+          </Link>{" "}
+          atau{" "}
+          <Link href="/register?next=/studio" className="text-brand-accent">
+            daftar
+          </Link>{" "}
+          untuk menyimpan riwayat & memakai API key Gemini sendiri.
+        </div>
+      ) : null}
 
       {busy ? (
         <div className="sticky top-2 z-30 mb-4 rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">

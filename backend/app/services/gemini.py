@@ -82,7 +82,7 @@ def fmt_clock(t) -> str:
     return "%02d:%02d" % (m, s)
 
 
-def analyze_transcript(req: AnalyzeRequest) -> List[dict]:
+def analyze_transcript(req: AnalyzeRequest, api_key: Optional[str] = None) -> List[dict]:
     """Rekomendasi potongan viral LANGSUNG dari transkrip asli + timestamp."""
     if req.segments:
         ts = "\n".join("[" + fmt_clock(s.startSec) + "] " + ((s.text or "").strip()) for s in req.segments)
@@ -106,7 +106,7 @@ def analyze_transcript(req: AnalyzeRequest) -> List[dict]:
         "Balas HANYA JSON array valid tanpa markdown, format:\n"
         "[{\"startSec\":45,\"endSec\":95,\"durationFormatted\":\"00:45 - 01:35 (50 detik)\",\"title\":\"Judul singkat menarik\",\"hook\":\"Kalimat hook 3 detik pertama\",\"reasonWhyViral\":\"Alasan kenapa berpotensi viral\",\"transcriptSnippet\":\"Cuplikan kalimat utama dari segmen\"}]"
     )
-    text = generate(prompt)
+    text = generate(prompt, api_key=api_key)
     try:
         arr = extract_json_array(text)
     except Exception as e:
@@ -137,7 +137,7 @@ def analyze_transcript(req: AnalyzeRequest) -> List[dict]:
     return out
 
 
-def hooks_captions(req: HooksRequest) -> dict:
+def hooks_captions(req: HooksRequest, api_key: Optional[str] = None) -> dict:
     prompt = (
         "Buatkan 1 Hook viral 3-detik pertama, caption media sosial lengkap dengan CTA, hashtag relevan, "
         "dan 4 baris teks subtitle untuk video pendek.\n"
@@ -145,7 +145,7 @@ def hooks_captions(req: HooksRequest) -> dict:
         "Balas HANYA JSON valid tanpa markdown:\n"
         "{\"viralHook\":\"Teks hook besar\",\"caption\":\"Caption dengan storytelling dan CTA\",\"hashtags\":\"#reels #tiktok #shorts #viral\",\"subtitles\":[\"Baris 1\",\"Baris 2\",\"Baris 3\",\"Baris 4\"]}"
     )
-    text = generate(prompt)
+    text = generate(prompt, api_key=api_key)
     try:
         obj = extract_json_object(text)
     except Exception as e:

@@ -46,9 +46,14 @@ export default function Home() {
             OtoPost <span className="text-brand-accent">Studio</span>
           </span>
         </div>
-        <Link href="/studio" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
-          Buka Studio
-        </Link>
+        <div className="flex items-center gap-3 text-sm">
+          <Link href="/login" className="text-slate-300 hover:text-white">
+            Masuk
+          </Link>
+          <Link href="/studio" className="rounded-xl bg-brand px-4 py-2 font-semibold text-white">
+            Buka Studio
+          </Link>
+        </div>
       </header>
 
       <section className="py-16 text-center">
@@ -68,10 +73,10 @@ export default function Home() {
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link
-            href="/studio"
+            href="/register"
             className="rounded-xl bg-gradient-to-r from-brand to-brand-accent px-6 py-3 text-sm font-semibold text-white"
           >
-            Coba Sekarang →
+            Mulai Gratis →
           </Link>
           <a href="#harga" className="rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold">
             Lihat Harga
@@ -110,7 +115,7 @@ export default function Home() {
                 ))}
               </ul>
               <Link
-                href="/studio"
+                href="/register"
                 className={`mt-6 block rounded-xl px-4 py-2 text-center text-sm font-semibold ${
                   p.highlight ? "bg-brand text-white" : "border border-white/15"
                 }`}
@@ -121,7 +126,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-4 text-center text-xs text-slate-500">
-          *Login & pembayaran (Midtrans/Xendit) aktif di rilis berikutnya.
+          Login & simpan API key Gemini sendiri sudah aktif. Pembayaran (Midtrans/Xendit) menyusul.
         </p>
       </section>
 
