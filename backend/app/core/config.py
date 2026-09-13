@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     max_clip_seconds: int = Field(default=180, alias="MAX_CLIP_SECONDS")
     job_ttl_seconds: int = Field(default=3600, alias="JOB_TTL_SECONDS")
 
+    # ===== Billing & Langganan (Fase 2) =====
+    billing_enabled: bool = Field(default=True, alias="BILLING_ENABLED")
+    payment_provider: str = Field(default="simulate", alias="PAYMENT_PROVIDER")
+    app_base_url: str = Field(default="", alias="APP_BASE_URL")
+    midtrans_server_key: str = Field(default="", alias="MIDTRANS_SERVER_KEY")
+    midtrans_client_key: str = Field(default="", alias="MIDTRANS_CLIENT_KEY")
+    midtrans_is_production: bool = Field(default=False, alias="MIDTRANS_IS_PRODUCTION")
+    billing_simulate_allow: bool = Field(default=False, alias="BILLING_SIMULATE_ALLOW")
+
     @property
     def public_base(self) -> str:
         return self.public_base_url.rstrip("/")

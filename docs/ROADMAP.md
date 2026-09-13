@@ -18,11 +18,13 @@
 - [ ] Login Google (OAuth) — menyusul
 - [ ] Verifikasi email + reset password
 
-## Fase 2 — Langganan & Billing
-- [ ] **Pembayaran**: Midtrans / Xendit (QRIS, e-wallet, VA) — paket Free / Creator / Pro
-- [ ] Webhook pembayaran → upgrade paket + top-up kredit otomatis
-- [ ] **Kuota & rate limit** per paket, halaman tagihan/riwayat
-- [ ] Landing & pricing dipoles untuk konversi
+## Fase 2 — Langganan & Billing (selesai)
+- [x] **Pembayaran**: Midtrans Snap (QRIS, e-wallet, VA) lewat arsitektur provider-agnostik (Xendit tinggal tambah adapter); default `PAYMENT_PROVIDER=simulate` agar jalan tanpa akun merchant — paket Free / Creator / Pro
+- [x] Webhook pembayaran (`/billing/webhook/midtrans`, verifikasi signature SHA-512) → upgrade paket + top-up kredit otomatis (idempoten)
+- [x] Halaman **Harga** (`/pricing`), halaman **return** pasca-bayar, riwayat tagihan di `/account`
+- [x] Masa aktif paket 30 hari + auto-downgrade saat kedaluwarsa (dicek saat login & `/auth/me`)
+- [ ] Kuota & rate limit granular per paket (dasar kredit sudah ada) — lanjutan
+- [ ] Xendit adapter (opsional, swap-in)
 
 ## Fase 3 — Skala & Storage
 - [ ] **Storage** hasil klip ke S3 / Cloudflare R2 (+ CDN) supaya hemat disk VPS

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
-import { api } from "@/lib/api";
+import { api, type Order } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 export default function AccountPage() {
@@ -15,6 +16,7 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login?next=/account");
@@ -30,9 +32,21 @@ export default function AccountPage() {
     }
   }, []);
 
+  const loadOrders = useCallback(async () => {
+    try {
+      const r = await api.getOrders();
+      setOrders(r.orders);
+    } catch {
+      // abaikan
+    }
+  }, []);
+
   useEffect(() => {
-    if (user) void loadCreds();
-  }, [user, loadCreds]);
+    if (user) {
+      void loadCreds();
+      void loadOrders();
+    }
+  }, [user, loadCreds, loadOrders]);
 
   async function saveKey() {
     setBusy(true);
@@ -88,6 +102,17 @@ export default function AccountPage() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="text-xs text-slate-400">Paket</div>
           <div className="mt-1 font-semibold capitalize">{user.plan}</div>
+          {user.planExpiresAt ? (
+            <div className="mt-1 text-xs text-slate-500">
+              Berlaku s/d {new Date(user.planExpiresAt).toLocaleDateString("id-ID")}
+            </div>
+          ) : null}
+          <Link
+            href="/pricing"
+            className="mt-2 inline-block text-xs font-semibold text-brand-accent"
+          >
+            {user.plan === "free" ? "Upgrade →" : "Perpanjang / ubah →"}
+          </Link>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <div className="text-xs text-slate-400">Kredit</div>
@@ -140,6 +165,45 @@ export default function AccountPage() {
             </button>
           ) : null}
         </div>
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Riwayat pembayaran</h2>
+          <Link href="/pricing" className="text-xs font-semibold text-brand-accent">
+            Beli paket →
+          </Link>
+        </div>
+        {orders.length === 0 ? (
+          <p className="text-sm text-slate-400">Belum ada transaksi.</p>
+        ) : (
+          <div className="divide-y divide-white/5 text-sm">
+            {orders.map((o) => (
+              <div key={o.orderId} className="flex items-center justify-between py-2">
+                <div>
+                  <div className="font-semibold capitalize">{o.plan}</div>
+                  <div className="text-xs text-slate-500">
+                    {o.createdAt ? new Date(o.createdAt).toLocaleString("id-ID") : o.orderId}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">Rp{o.amount.toLocaleString("id-ID")}</div>
+                  <div
+                    className={`text-xs ${
+                      o.status === "paid"
+                        ? "text-green-400"
+                        : o.status === "pending"
+                          ? "text-yellow-400"
+                          : "text-slate-500"
+                    }`}
+                  >
+                    {o.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <button

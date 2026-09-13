@@ -47,6 +47,9 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-3 text-sm">
+          <Link href="/pricing" className="text-slate-300 hover:text-white">
+            Harga
+          </Link>
           <Link href="/login" className="text-slate-300 hover:text-white">
             Masuk
           </Link>
@@ -115,7 +118,7 @@ export default function Home() {
                 ))}
               </ul>
               <Link
-                href="/register"
+                href="/pricing"
                 className={`mt-6 block rounded-xl px-4 py-2 text-center text-sm font-semibold ${
                   p.highlight ? "bg-brand text-white" : "border border-white/15"
                 }`}
@@ -126,7 +129,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-4 text-center text-xs text-slate-500">
-          Login & simpan API key Gemini sendiri sudah aktif. Pembayaran (Midtrans/Xendit) menyusul.
+          Login, simpan API key Gemini sendiri, & bayar via QRIS/e-wallet/VA (Midtrans) sudah aktif.
         </p>
       </section>
 

@@ -17,6 +17,7 @@ from ..schemas.auth import (
     TokenResponse,
     UserOut,
 )
+from ..services.billing import downgrade_if_expired
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,6 +31,7 @@ def _user_out(u: models.User) -> dict:
         "name": u.name or "",
         "plan": u.plan or "free",
         "credits": int(u.credits or 0),
+        "planExpiresAt": u.plan_expires_at.isoformat() if u.plan_expires_at else None,
     }
 
 
@@ -65,11 +67,13 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Email atau password salah")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Akun nonaktif")
+    downgrade_if_expired(db, user)
     return {"accessToken": _issue_token(user), "tokenType": "bearer", "user": _user_out(user)}
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: models.User = Depends(get_current_user)):
+def me(user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    downgrade_if_expired(db, user)
     return _user_out(user)
 
 

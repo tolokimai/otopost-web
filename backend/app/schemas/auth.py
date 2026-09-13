@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     name: str = ""
     plan: str = "free"
     credits: int = 0
+    planExpiresAt: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

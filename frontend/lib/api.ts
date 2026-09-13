@@ -43,6 +43,7 @@ export type UserOut = {
   name: string;
   plan: string;
   credits: number;
+  planExpiresAt?: string | null;
 };
 
 export type TokenResponse = {
@@ -53,6 +54,39 @@ export type TokenResponse = {
 
 export type ProviderStatus = { provider: string; configured: boolean };
 export type CredentialsStatus = { providers: ProviderStatus[] };
+
+export type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  credits: number;
+  features: string[];
+  purchasable: boolean;
+  highlight: boolean;
+};
+
+export type PlansResponse = { plans: Plan[]; currency: string; provider: string };
+
+export type CheckoutResponse = {
+  orderId: string;
+  redirectUrl: string;
+  provider: string;
+  simulate: boolean;
+  token: string;
+};
+
+export type Order = {
+  orderId: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  creditsGranted: number;
+  createdAt?: string | null;
+  paidAt?: string | null;
+};
+
+export type OrdersResponse = { orders: Order[] };
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 const TOKEN_KEY = "otopost_token";
@@ -153,5 +187,10 @@ export const api = {
   getCredentials: () => getJSON<CredentialsStatus>("/auth/credentials"),
   putCredential: (body: { provider: string; value: string }) =>
     putJSON<ProviderStatus>("/auth/credentials", body),
+  getPlans: () => getJSON<PlansResponse>("/billing/plans"),
+  checkout: (body: { plan: string }) => postJSON<CheckoutResponse>("/billing/checkout", body),
+  simulatePay: (orderId: string) => postJSON<Order>(`/billing/simulate/${orderId}/pay`, {}),
+  getOrders: () => getJSON<OrdersResponse>("/billing/orders"),
+  getOrder: (orderId: string) => getJSON<Order>(`/billing/orders/${orderId}`),
   mediaUrl,
 };
