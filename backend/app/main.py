@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .core.config import settings
 from .db.base import init_db
-from .routers import ai, auth, clips, health, transcript
+from .routers import ai, auth, billing, clips, health, transcript
 
 os.makedirs(settings.work_dir, exist_ok=True)
 
@@ -41,3 +41,4 @@ app.include_router(auth.router)
 app.include_router(transcript.router)
 app.include_router(clips.router)
 app.include_router(ai.router)
+app.include_router(billing.router)

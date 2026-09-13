@@ -30,6 +30,9 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(120), default="")
     plan: Mapped[str] = mapped_column(String(32), default="free")
     credits: Mapped[int] = mapped_column(Integer, default=30)
+    plan_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -38,6 +41,9 @@ class User(Base):
     )
 
     credentials: Mapped[List["Credential"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    orders: Mapped[List["Order"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -71,3 +77,26 @@ class UsageEvent(Base):
     amount: Mapped[int] = mapped_column(Integer, default=1)
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    order_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(40), default="simulate")
+    plan: Mapped[str] = mapped_column(String(32), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="IDR")
+    credits_granted: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship(back_populates="orders")
