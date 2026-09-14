@@ -45,10 +45,19 @@ def get_current_user(
     return user
 
 
+def require_admin(user: models.User = Depends(get_current_user)) -> models.User:
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Akses admin diperlukan")
+    return user
+
+
 def require_user_or_open(
     user: Optional[models.User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
 ) -> Optional[models.User]:
-    """Izinkan anonim kecuali REQUIRE_AUTH aktif."""
-    if settings.require_auth and not user:
+    """Izinkan anonim kecuali runtime setting require_auth aktif."""
+    from ..services import runtime_config
+
+    if runtime_config.get_bool(db, "require_auth", settings.require_auth) and not user:
         raise HTTPException(status_code=401, detail="Butuh login untuk memakai fitur ini")
     return user
