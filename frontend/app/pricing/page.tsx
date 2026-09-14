@@ -7,36 +7,6 @@ import Header from "@/components/Header";
 import { api, type Plan } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-const FALLBACK_PLANS: Plan[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: 0,
-    credits: 30,
-    features: ["3 video / bulan", "Export 720p", "Watermark"],
-    purchasable: false,
-    highlight: false,
-  },
-  {
-    id: "creator",
-    name: "Creator",
-    price: 99000,
-    credits: 150,
-    features: ["30 video / bulan", "Export 1080p", "Tanpa watermark", "Semua gaya subtitle"],
-    purchasable: true,
-    highlight: true,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 249000,
-    credits: 1000,
-    features: ["Video unlimited", "Render prioritas", "Caption AI penuh", "Dukungan cepat"],
-    purchasable: true,
-    highlight: false,
-  },
-];
-
 function rupiah(n: number): string {
   if (!n) return "Rp0";
   return "Rp" + n.toLocaleString("id-ID");
@@ -45,7 +15,7 @@ function rupiah(n: number): string {
 export default function PricingPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [provider, setProvider] = useState<string>("simulate");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +27,7 @@ export default function PricingPage() {
         if (r.plans && r.plans.length) setPlans(r.plans);
         setProvider(r.provider || "simulate");
       })
-      .catch(() => {
-        // pakai fallback statis
-      });
+      .catch((err) => setError(err instanceof Error ? err.message : "Gagal memuat paket"));
   }, []);
 
   const buy = useCallback(
@@ -97,6 +65,10 @@ export default function PricingPage() {
         </div>
       ) : null}
 
+      {plans.length === 0 && !error ? (
+        <p className="py-10 text-center text-sm text-slate-500">Memuat paket terbaru…</p>
+      ) : null}
+
       <section className="grid gap-4 sm:grid-cols-3">
         {plans.map((p) => (
           <div
@@ -108,7 +80,7 @@ export default function PricingPage() {
             <div className="text-sm text-slate-400">{p.name}</div>
             <div className="mt-1 text-3xl font-extrabold">
               {rupiah(p.price)}
-              <span className="text-sm font-normal text-slate-500">/bln</span>
+              <span className="text-sm font-normal text-slate-500">/{p.durationDays || 30} hari</span>
             </div>
             <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-300">
               {p.features.map((it) => (
