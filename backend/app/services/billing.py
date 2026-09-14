@@ -26,6 +26,7 @@ def create_order(db: Session, user: models.User, plan: Plan, provider: str) -> m
         amount=int(plan.price),
         currency="IDR",
         credits_granted=int(plan.credits),
+        duration_days=max(1, int(plan.duration_days)),
         status="pending",
     )
     db.add(order)
@@ -48,7 +49,8 @@ def apply_paid_order(db: Session, order: models.Order) -> bool:
         if base is not None and base.tzinfo is None:
             base = base.replace(tzinfo=timezone.utc)
         start = base if (base and base > _now()) else _now()
-        user.plan_expires_at = start + timedelta(days=PLAN_DAYS)
+        duration_days = max(1, int(order.duration_days or PLAN_DAYS))
+        user.plan_expires_at = start + timedelta(days=duration_days)
         db.add(user)
         db.add(
             models.UsageEvent(
