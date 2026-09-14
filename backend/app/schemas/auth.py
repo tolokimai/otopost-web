@@ -39,6 +39,7 @@ class UserOut(BaseModel):
     plan: str = "free"
     credits: int = 0
     planExpiresAt: Optional[str] = None
+    isAdmin: bool = False
 
 
 class TokenResponse(BaseModel):

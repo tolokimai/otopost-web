@@ -17,6 +17,7 @@ from ..schemas.auth import (
     TokenResponse,
     UserOut,
 )
+from ..services import runtime_config
 from ..services.billing import downgrade_if_expired
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -32,6 +33,7 @@ def _user_out(u: models.User) -> dict:
         "plan": u.plan or "free",
         "credits": int(u.credits or 0),
         "planExpiresAt": u.plan_expires_at.isoformat() if u.plan_expires_at else None,
+        "isAdmin": bool(u.is_admin),
     }
 
 
@@ -51,7 +53,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         email=email,
         password_hash=hash_password(req.password),
         name=(req.name or "").strip(),
-        credits=settings.free_credits,
+        credits=runtime_config.get_int(db, "free_credits", settings.free_credits),
+        is_admin=settings.is_admin_email(email),
     )
     db.add(user)
     db.commit()

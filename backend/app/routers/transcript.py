@@ -9,8 +9,12 @@ from ..db import models
 from ..db.base import get_db
 from ..schemas.transcript import TranscriptRequest, TranscriptResponse
 from ..services import youtube
+from ..services.entitlements import require_feature
 
-router = APIRouter(tags=["transcript"])
+router = APIRouter(
+    tags=["transcript"],
+    dependencies=[Depends(require_feature("podcast"))],
+)
 
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 

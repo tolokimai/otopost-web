@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     credential_enc_key: str = Field(default="", alias="CREDENTIAL_ENC_KEY")
     require_auth: bool = Field(default=False, alias="REQUIRE_AUTH")
     free_credits: int = Field(default=30, alias="FREE_CREDITS")
+    admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
 
     # ===== Hardening batas kerja =====
     max_segments_per_job: int = Field(default=30, alias="MAX_SEGMENTS_PER_JOB")
@@ -38,6 +39,12 @@ class Settings(BaseSettings):
     midtrans_is_production: bool = Field(default=False, alias="MIDTRANS_IS_PRODUCTION")
     billing_simulate_allow: bool = Field(default=False, alias="BILLING_SIMULATE_ALLOW")
 
+    # ===== Remake / MuseTalk 1.5 GPU worker =====
+    musetalk_worker_url: str = Field(default="", alias="MUSETALK_WORKER_URL")
+    musetalk_worker_token: str = Field(default="", alias="MUSETALK_WORKER_TOKEN")
+    musetalk_timeout_seconds: int = Field(default=1800, alias="MUSETALK_TIMEOUT_SECONDS")
+    max_upload_mb: int = Field(default=100, alias="MAX_UPLOAD_MB")
+
     @property
     def public_base(self) -> str:
         return self.public_base_url.rstrip("/")
@@ -45,6 +52,13 @@ class Settings(BaseSettings):
     @property
     def jwt_key(self) -> str:
         return self.jwt_secret or "otopost-dev-insecure-change-me"
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {item.strip().lower() for item in self.admin_emails.split(",") if item.strip()}
+
+    def is_admin_email(self, email: str) -> bool:
+        return (email or "").strip().lower() in self.admin_email_set
 
 
 settings = Settings()

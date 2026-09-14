@@ -44,6 +44,7 @@ export type UserOut = {
   plan: string;
   credits: number;
   planExpiresAt?: string | null;
+  isAdmin: boolean;
 };
 
 export type TokenResponse = {
@@ -60,6 +61,7 @@ export type Plan = {
   name: string;
   price: number;
   credits: number;
+  durationDays?: number;
   features: string[];
   purchasable: boolean;
   highlight: boolean;
@@ -87,6 +89,106 @@ export type Order = {
 };
 
 export type OrdersResponse = { orders: Order[] };
+
+export type StudioMenu = {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  href: string;
+  isEnabled: boolean;
+  isReady: boolean;
+  requiredPlan: string;
+  sortOrder: number;
+};
+
+export type CarouselSlide = {
+  headline: string;
+  body: string;
+  subtext: string;
+  imageBase64?: string | null;
+};
+
+export type CarouselDesign = {
+  aspectRatio: string;
+  backgroundTheme: string;
+  typographyStyle: string;
+  fontFamily: string;
+  textColorHex: string;
+  accentColorHex: string;
+  baseFontScale: number;
+  textEffect: string;
+  ctaText: string;
+  watermarkText: string;
+  showPageNumber: boolean;
+  showSwipe: boolean;
+  logoBase64?: string | null;
+};
+
+export type CarouselPayload = { title: string; slides: CarouselSlide[]; design: CarouselDesign };
+export type CarouselRender = { job: string; images: string[]; zipUrl: string };
+export type CarouselProject = {
+  id: string;
+  title: string;
+  status: string;
+  payload: CarouselPayload;
+  output: CarouselRender | Record<string, never>;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type MediaAsset = {
+  id: string;
+  kind: "video" | "photo" | "audio";
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  url: string;
+  createdAt?: string | null;
+};
+
+export type RemakeJob = {
+  job: string;
+  status: string;
+  mode: string;
+  progress: number;
+  downloadUrl: string;
+  error: string;
+  lipsyncApplied: boolean;
+};
+
+export type AdminPlan = Plan & { isActive: boolean; sortOrder: number };
+export type AdminSetting = {
+  key: string;
+  value: string;
+  valueType: string;
+  category: string;
+  label: string;
+  description: string;
+  isSecret: boolean;
+  hasValue: boolean;
+};
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  plan: string;
+  credits: number;
+  planExpiresAt?: string | null;
+  isActive: boolean;
+  isAdmin: boolean;
+  createdAt?: string | null;
+};
+export type AdminOverview = {
+  users: number;
+  activeUsers: number;
+  paidUsers: number;
+  orders: number;
+  paidOrders: number;
+  revenue: number;
+  plans: number;
+  menusEnabled: number;
+};
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 const TOKEN_KEY = "otopost_token";
@@ -162,6 +264,27 @@ async function putJSON<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function deleteJSON(path: string): Promise<void> {
+  const res = await fetch(apiUrl(path), { method: "DELETE", headers: { ...authHeaders() } });
+  if (!res.ok) {
+    const detail = await parseError(res);
+    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
+  }
+}
+
+async function uploadForm<T>(path: string, body: FormData): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: { ...authHeaders() },
+    body,
+  });
+  if (!res.ok) {
+    const detail = await parseError(res);
+    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
+  }
+  return (await res.json()) as T;
+}
+
 export const api = {
   transcript: (body: { url: string; langs?: string[] }) =>
     postJSON<TranscriptResponse>("/transcript", body),
@@ -192,5 +315,58 @@ export const api = {
   simulatePay: (orderId: string) => postJSON<Order>(`/billing/simulate/${orderId}/pay`, {}),
   getOrders: () => getJSON<OrdersResponse>("/billing/orders"),
   getOrder: (orderId: string) => getJSON<Order>(`/billing/orders/${orderId}`),
+  getStudioMenus: () => getJSON<{ menus: StudioMenu[] }>("/config/studio-menus"),
+
+  carouselGenerate: (body: {
+    topic: string;
+    audience: string;
+    goal: string;
+    tone: string;
+    slideCount: number;
+  }) => postJSON<{ title: string; slides: CarouselSlide[] }>("/carousel/generate", body),
+  carouselRender: (body: CarouselPayload) => postJSON<CarouselRender>("/carousel/render", body),
+  carouselProjects: () => getJSON<{ projects: CarouselProject[] }>("/carousel/projects"),
+  carouselCreateProject: (body: CarouselPayload) =>
+    postJSON<CarouselProject>("/carousel/projects", body),
+  carouselUpdateProject: (id: string, body: CarouselPayload) =>
+    putJSON<CarouselProject>(`/carousel/projects/${id}`, body),
+  carouselRenderProject: (id: string) =>
+    postJSON<CarouselProject>(`/carousel/projects/${id}/render`, {}),
+  carouselDeleteProject: (id: string) => deleteJSON(`/carousel/projects/${id}`),
+
+  remakeUpload: (kind: "video" | "photo" | "audio", file: File) => {
+    const body = new FormData();
+    body.append("kind", kind);
+    body.append("file", file);
+    return uploadForm<MediaAsset>("/remake/upload", body);
+  },
+  remakeAssets: () => getJSON<{ assets: MediaAsset[] }>("/remake/assets"),
+  remakeDeleteAsset: (id: string) => deleteJSON(`/remake/assets/${id}`),
+  museTalkStatus: () => getJSON<Record<string, unknown> & { ready: boolean }>("/remake/musetalk-status"),
+  remakeStart: (body: {
+    mediaId: string;
+    audioId: string;
+    mode: "overlay" | "lipsync";
+    aspectRatio: string;
+    subtitleText: string;
+    subtitleStyle: string;
+    consentConfirmed: boolean;
+  }) => postJSON<RemakeJob>("/remake/jobs", body),
+  remakeStatus: (job: string) => getJSON<RemakeJob>(`/remake/jobs/${job}`),
+
+  adminOverview: () => getJSON<AdminOverview>("/admin/overview"),
+  adminPlans: () => getJSON<{ plans: AdminPlan[] }>("/admin/plans"),
+  adminCreatePlan: (body: unknown) => postJSON<AdminPlan>("/admin/plans", body),
+  adminUpdatePlan: (id: string, body: unknown) => putJSON<AdminPlan>(`/admin/plans/${id}`, body),
+  adminDeletePlan: (id: string) => deleteJSON(`/admin/plans/${id}`),
+  adminSettings: () => getJSON<{ settings: AdminSetting[] }>("/admin/settings"),
+  adminUpdateSetting: (key: string, body: { value: string; clear?: boolean }) =>
+    putJSON<AdminSetting>(`/admin/settings/${key}`, body),
+  adminMenus: () => getJSON<{ menus: StudioMenu[] }>("/admin/menus"),
+  adminCreateMenu: (body: unknown) => postJSON<StudioMenu>("/admin/menus", body),
+  adminUpdateMenu: (id: string, body: unknown) => putJSON<StudioMenu>(`/admin/menus/${id}`, body),
+  adminDeleteMenu: (id: string) => deleteJSON(`/admin/menus/${id}`),
+  adminUsers: (q = "") => getJSON<{ users: AdminUser[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}`),
+  adminUpdateUser: (id: string, body: unknown) => putJSON<AdminUser>(`/admin/users/${id}`, body),
   mediaUrl,
 };

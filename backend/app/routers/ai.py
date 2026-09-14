@@ -9,8 +9,13 @@ from ..db import models
 from ..db.base import get_db
 from ..schemas.ai import AnalyzeRequest, AnalyzeResponse, HooksRequest, HooksResponse
 from ..services import gemini
+from ..services.entitlements import require_feature
 
-router = APIRouter(prefix="/ai", tags=["ai"])
+router = APIRouter(
+    prefix="/ai",
+    tags=["ai"],
+    dependencies=[Depends(require_feature("podcast"))],
+)
 
 
 def _resolve_gemini_key(user: Optional[models.User], db: Session) -> Optional[str]:

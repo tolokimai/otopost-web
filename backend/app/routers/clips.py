@@ -10,32 +10,39 @@ from ..core.deps import require_user_or_open
 from ..db import models
 from ..db.base import get_db
 from ..schemas.clips import ClipsRequest, ClipsResponse
-from ..services import clipper
+from ..services import clipper, runtime_config
+from ..services.entitlements import require_feature
 from ..services.jobs import jobs
 
-router = APIRouter(tags=["clips"])
+router = APIRouter(tags=["clips"], dependencies=[Depends(require_feature("podcast"))])
 
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 
-def _validate(req: ClipsRequest) -> None:
+def _validate(req: ClipsRequest, db: Session) -> None:
+    max_segments = runtime_config.get_int(
+        db, "max_segments_per_job", settings.max_segments_per_job
+    )
+    max_clip_seconds = runtime_config.get_int(
+        db, "max_clip_seconds", settings.max_clip_seconds
+    )
     if not req.url or not _URL_RE.match(req.url.strip()):
         raise HTTPException(status_code=400, detail="URL video tidak valid")
     if not req.segments:
         raise HTTPException(status_code=400, detail="Tidak ada segmen")
-    if len(req.segments) > settings.max_segments_per_job:
+    if len(req.segments) > max_segments:
         raise HTTPException(
             status_code=400,
-            detail="Terlalu banyak segmen (maks %d per proses)" % settings.max_segments_per_job,
+            detail="Terlalu banyak segmen (maks %d per proses)" % max_segments,
         )
     for seg in req.segments:
         dur = float(seg.endSec) - float(seg.startSec)
         if dur <= 0:
             raise HTTPException(status_code=400, detail="Segmen tidak valid (durasi <= 0)")
-        if dur > settings.max_clip_seconds:
+        if dur > max_clip_seconds:
             raise HTTPException(
                 status_code=400,
-                detail="Segmen terlalu panjang (maks %d detik)" % settings.max_clip_seconds,
+                detail="Segmen terlalu panjang (maks %d detik)" % max_clip_seconds,
             )
 
 
@@ -67,7 +74,7 @@ def clips(
     db: Session = Depends(get_db),
 ):
     """Potong sinkron (tunggu sampai selesai). Cocok untuk 1-2 segmen."""
-    _validate(req)
+    _validate(req, db)
     _consume_credit(db, user)
     result = clipper.process_clips(req)
     _log_usage(db, user, "clips", len(result.get("clips", [])))
@@ -82,7 +89,7 @@ def clips_async(
     db: Session = Depends(get_db),
 ):
     """Potong async: balikin job lalu poll /clips/status/{job}. Anti-timeout untuk banyak klip."""
-    _validate(req)
+    _validate(req, db)
     _consume_credit(db, user)
     job = uuid.uuid4().hex[:12]
     jobs.set(

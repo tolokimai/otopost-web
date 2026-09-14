@@ -45,20 +45,38 @@ def get_db() -> Iterator[Session]:
 
 
 def _ensure_schema() -> None:
-    """Migrasi ringan idempoten untuk kolom baru (SQLite & Postgres)."""
+    """Migrasi ringan idempoten untuk SQLite & Postgres yang sudah berjalan."""
     insp = inspect(engine)
-    tables = insp.get_table_names()
+    tables = set(insp.get_table_names())
     if "users" in tables:
         cols = {c["name"] for c in insp.get_columns("users")}
+        statements = []
         if "plan_expires_at" not in cols:
             ts = "TIMESTAMPTZ" if engine.dialect.name == "postgresql" else "TIMESTAMP"
+            statements.append(f"ALTER TABLE users ADD COLUMN plan_expires_at {ts}")
+        if "is_admin" not in cols:
+            boolean = "BOOLEAN NOT NULL DEFAULT FALSE" if engine.dialect.name == "postgresql" else "BOOLEAN NOT NULL DEFAULT 0"
+            statements.append(f"ALTER TABLE users ADD COLUMN is_admin {boolean}")
+        if statements:
             with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE users ADD COLUMN plan_expires_at {ts}"))
+                for statement in statements:
+                    conn.execute(text(statement))
+
+    if "orders" in tables:
+        cols = {c["name"] for c in insp.get_columns("orders")}
+        if "duration_days" not in cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE orders ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30"))
 
 
 def init_db() -> None:
-    """Buat semua tabel bila belum ada (aman dipanggil berulang)."""
+    """Buat/migrasikan tabel lalu seed katalog; aman dipanggil berulang."""
     from . import models  # noqa: F401  pastikan model ter-register
 
     Base.metadata.create_all(bind=engine)
     _ensure_schema()
+
+    from ..services.bootstrap import seed_defaults
+
+    with SessionLocal() as db:
+        seed_defaults(db)

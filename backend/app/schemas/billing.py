@@ -8,6 +8,7 @@ class PlanOut(BaseModel):
     name: str
     price: int
     credits: int
+    durationDays: int = 30
     features: List[str]
     purchasable: bool
     highlight: bool
