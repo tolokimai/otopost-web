@@ -1,150 +1,150 @@
-# OtoPost Web — AI Podcast Clipper (SaaS-ready)
+# OtoPost Web
 
-Ubah **1 video podcast panjang** menjadi **puluhan klip pendek viral** (Reels / TikTok / Shorts) secara otomatis: ambil transkrip → AI temukan momen viral → potong + reframe 9:16 + subtitle → caption & hashtag otomatis.
+OtoPost adalah fondasi SaaS produksi konten: Podcast Clip, Carousel Studio, Remake/audio overlay, true lipsync MuseTalk 1.5, billing, dan admin DB-backed dalam monorepo Next.js + FastAPI.
 
-Repo ini adalah **penulisan ulang** dari aplikasi APK menjadi **web app** dengan arsitektur rapi yang siap tumbuh jadi produk langganan (SaaS).
+> Status jujur: fitur di atas tersedia di kode. Persona, Content Plan, kalender, dan auto-post belum dibangun; lihat `docs/ROADMAP.md`. MuseTalk membutuhkan NVIDIA GPU/model terpisah dan tetap harus diuji pada deployment GPU milikmu.
 
-> Fokus rilis pertama: **Podcast Clip**. Mode lain (Carousel, Self Video, AI Video) menyusul di roadmap.
+## Yang tersedia
 
-**Fase 0 (selesai):** login/registrasi + database + akun user (paket & kredit) + simpan API key Gemini sendiri (terenkripsi) + hardening endkerja (validasi input, batas segmen/durasi, TTL job, kredit).
+- **Admin `/admin`**: CRUD paket, harga, kredit, masa aktif, runtime settings/secret, user, role, menu, toggle, urutan, dan minimum plan.
+- **Studio Hub `/studio`**: menu berasal dari database.
+- **Podcast `/studio/podcast`**: transkrip YouTube → momen AI → potong/reframe/subtitle → caption.
+- **Carousel `/studio/carousel`**: AI outline, editor, rasio/tema/warna/foto/CTA/watermark, project, PNG + ZIP.
+- **Remake `/studio/remake`**: foto/video + audio, overlay FFmpeg, subtitle, dan true lipsync MuseTalk 1.5.
+- **Billing**: Free/Creator/Pro seed, Midtrans/simulate, order dan expiry.
 
----
+## Arsitektur ringkas
 
-## Arsitektur
-
-```
-                +---------------------------+
-  Browser  <-->  |  Frontend (Next.js)       |   Vercel / Docker
-                +------------+--------------+
-                             | HTTPS (JSON, Bearer JWT)
-                             v
-                +---------------------------+
-                |  Backend (FastAPI)        |   VPS Docker
-                |  /auth/*  /transcript     |
-                |  /clips-async  /ai/*      |
-                +------------+--------------+
-                             |
-         SQLite/Postgres + yt-dlp + ffmpeg + OpenCV + Gemini API
+```text
+Next.js ──JWT/JSON──> FastAPI ──> SQLite/Postgres
+                         ├─ Gemini, yt-dlp, FFmpeg, OpenCV, Pillow
+                         ├─ Midtrans
+                         └─ HTTP ──> MuseTalk 1.5 NVIDIA GPU Worker
 ```
 
-- **Semua pekerjaan berat & API key ada di server** (aman, tidak bocor ke browser).
-- **Pemotongan klip pakai pola async job + polling** supaya tidak kena timeout reverse-proxy (ini akar masalah “macet” di versi lama).
-- **Frontend & backend beda origin** → backend meng-set `PUBLIC_BASE_URL` agar URL unduhan klip bersifat absolut.
-- **Auth JWT + database** (SQLite default, Postgres opsional) menyimpan user, kredit, dan API key user (terenkripsi).
+## Menjalankan lokal di Windows
 
----
+### Backend
 
-## Struktur Monorepo
+PowerShell:
 
-```
-otopost-web/
-├─ backend/                 # FastAPI
-│  ├─ app/
-│  │  ├─ core/             # config, security, passwords, tokens (JWT), crypto, deps
-│  │  ├─ db/               # engine, session, models (User, Credential, UsageEvent)
-│  │  ├─ schemas/          # model request/response (pydantic)
-│  │  ├─ services/         # yt-dlp, ffmpeg, gemini, reframe, subtitle, jobs
-│  │  ├─ routers/          # endpoint: health, auth, transcript, clips, ai
-│  │  └─ main.py           # app factory (lifespan init DB + CORS + /files + routers)
-│  ├─ requirements.txt
-│  └─ Dockerfile
-├─ frontend/                # Next.js (App Router + TS + Tailwind)
-│  ├─ app/                 # landing (/), studio (/studio), login, register, account
-│  ├─ components/          # Header, SegmentCard, ClipCard
-│  ├─ lib/api.ts           # client API + types
-│  ├─ lib/auth.tsx         # AuthProvider + useAuth (JWT di localStorage)
-│  └─ Dockerfile
-├─ docs/                    # ARCHITECTURE, API, ROADMAP
-├─ docker-compose.yml
-└─ .env.example
+```powershell
+cd C:\Users\USER\otopost-web\backend
+.\setup.ps1
+Copy-Item ..\.env.example .env
 ```
 
----
+Edit `backend\.env` minimal:
 
-## Menjalankan Lokal
-
-### 1) Backend
-
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp ../.env.example .env      # isi GEMINI_API_KEY minimal; set JWT_SECRET untuk auth
-uvicorn app.main:app --reload --port 8000
+```env
+CLIP_WORK_DIR=.\data\clips
+PUBLIC_BASE_URL=http://localhost:5000
+APP_BASE_URL=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000
+JWT_SECRET=ganti-dengan-random-panjang
+ADMIN_EMAILS=email-kamu@example.com
+PAYMENT_PROVIDER=simulate
 ```
 
-Butuh **ffmpeg** terpasang di sistem (sudah otomatis di dalam Docker). Database SQLite dibuat otomatis di `CLIP_WORK_DIR/otopost.db` saat start.
+Jalankan dengan interpreter venv yang sama:
 
-### 2) Frontend
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
+```
 
-```bash
-cd frontend
+Verifikasi:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sqlalchemy; print(sqlalchemy.__version__)"
+ffmpeg -version
+```
+
+`ModuleNotFoundError: sqlalchemy` berarti requirements belum dipasang pada interpreter yang menjalankan Uvicorn. Jangan mencampur Uvicorn global dengan Python venv.
+
+### Frontend
+
+```powershell
+cd C:\Users\USER\otopost-web\frontend
+Copy-Item .env.example .env.local
 npm install
-cp .env.example .env.local   # set NEXT_PUBLIC_API_BASE=http://localhost:8000
-npm run dev                  # http://localhost:3000
+npm run dev
 ```
 
-### 3) Docker (backend saja)
+`frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_BASE=http://localhost:5000
+NEXT_PUBLIC_REQUIRE_AUTH=false
+```
+
+Buka `http://localhost:3000`. Variabel `NEXT_PUBLIC_*` di-inline saat build; rebuild setelah mengubahnya.
+
+### Owner admin
+
+1. Set `ADMIN_EMAILS` ke email akunmu.
+2. Register/login menggunakan email tersebut.
+3. Startup otomatis mempromosikan existing user yang cocok.
+4. Buka `/admin`.
+
+Secret (Midtrans/MuseTalk token) dienkripsi sebelum disimpan dan tidak pernah dikirim kembali ke browser. Environment variable tetap menjadi fallback bila nilai DB belum diset.
+
+## Docker
+
+Backend:
 
 ```bash
 docker compose up --build backend
 ```
 
-Jalankan sekalian frontend:
+Backend + frontend:
 
 ```bash
 docker compose --profile with-frontend up --build
 ```
 
----
+Frontend Docker menerima `NEXT_PUBLIC_API_BASE` sebagai **build arg**, sudah diteruskan oleh Compose.
 
-## Autentikasi & Kredit
+## Billing
 
-- **Registrasi/Login** di `/register` & `/login` → dapat JWT (disimpan di `localStorage`).
-- **Akun** (`/account`): lihat paket & kredit, simpan **API key Gemini sendiri** (disimpan terenkripsi di server; dipakai untuk analisis AI agar kuota tidak dibatasi server).
-- **Mode wajib login:** set `REQUIRE_AUTH=true` (backend) dan `NEXT_PUBLIC_REQUIRE_AUTH=true` (frontend). Saat aktif, user paket `free` memakai 1 kredit tiap proses potong.
-- **Default `false`:** Studio tetap bisa dicoba tanpa login (memudahkan demo).
+Tanpa akun merchant, gunakan `PAYMENT_PROVIDER=simulate`. Untuk Midtrans:
 
----
+```env
+PAYMENT_PROVIDER=midtrans
+MIDTRANS_SERVER_KEY=...
+MIDTRANS_CLIENT_KEY=...
+MIDTRANS_IS_PRODUCTION=false
+APP_BASE_URL=https://frontend.domain.tld
+```
 
-## Environment Variables
+Notification URL: `https://backend.domain.tld/billing/webhook/midtrans`.
 
-| Variable | Sisi | Default | Keterangan |
-| --- | --- | --- | --- |
-| `GEMINI_API_KEY` | backend | — | API key Google Gemini (fallback server). |
-| `GEMINI_MODEL` | backend | `gemini-2.5-flash` | Model analisis transkrip & caption. |
-| `PUBLIC_BASE_URL` | backend | `""` | URL publik backend, mis. `https://backend.agenthebat.com`. Dipakai agar URL unduhan klip absolut. |
-| `CLIP_WORK_DIR` | backend | `/data/clips` | Folder hasil klip + SQLite (di-mount volume). |
-| `CLIP_SERVER_TOKEN` | backend | `""` | Legacy. Tidak lagi mem-block endpoint (digantikan JWT). |
-| `YTDLP_COOKIES` | backend | `""` | Path cookies.txt (opsional). |
-| `CORS_ORIGINS` | backend | `*` | Daftar origin frontend, pisah koma. |
-| `DATABASE_URL` | backend | `""` | Kosong = SQLite. Postgres: `postgresql+psycopg2://...`. |
-| `JWT_SECRET` | backend | `""` | **Wajib di produksi.** Kunci tanda tangan JWT. |
-| `JWT_EXPIRE_MINUTES` | backend | `10080` | Masa berlaku token (default 7 hari). |
-| `CREDENTIAL_ENC_KEY` | backend | `""` | Kunci enkripsi API key user. Kosong = turunkan dari `JWT_SECRET`. |
-| `REQUIRE_AUTH` | backend | `false` | `true` = semua endpoint kerja wajib login. |
-| `FREE_CREDITS` | backend | `30` | Kredit awal user paket free. |
-| `MAX_SEGMENTS_PER_JOB` | backend | `30` | Batas jumlah segmen per proses. |
-| `MAX_CLIP_SECONDS` | backend | `180` | Batas durasi tiap klip (detik). |
-| `JOB_TTL_SECONDS` | backend | `3600` | Umur status job di memori. |
-| `NEXT_PUBLIC_API_BASE` | frontend | `http://localhost:8000` | URL backend yang dipanggil browser. |
-| `NEXT_PUBLIC_REQUIRE_AUTH` | frontend | `false` | `true` = Studio wajib login. |
+Harga/fitur/durasi paket setelah seed diubah lewat Admin → Paket, bukan source code.
 
-> Catatan: variabel `NEXT_PUBLIC_*` di-*inline* saat build. Bila diubah, **rebuild** image/deploy frontend.
+## MuseTalk 1.5
 
----
+OtoPost **tidak menggunakan Wav2Lip**. True lipsync dikerjakan oleh worker terpisah berbasis official `TMElyralab/MuseTalk` v1.5. Backend biasa tidak cocok menjalankan model ini karena membutuhkan CUDA/PyTorch/model besar.
 
-## Deploy yang Disarankan
+Lihat `workers/musetalk/README.md`. Setelah worker GPU sehat, set di backend/Admin:
 
-- **Backend** → Docker di VPS (butuh ffmpeg + CPU untuk encode). Set `GEMINI_API_KEY`, `PUBLIC_BASE_URL`, dan `JWT_SECRET`.
-- **Frontend** → Vercel (paling gampang) atau Docker. Set `NEXT_PUBLIC_API_BASE` ke URL backend.
-- Produksi saat ini: backend `https://backend.agenthebat.com`, frontend `https://otopost.agenthebat.com`.
-- Untuk skala: set `DATABASE_URL` ke Postgres dan pindahkan `JobStore` ke Redis.
+```env
+MUSETALK_WORKER_URL=https://musetalk.domain.tld
+MUSETALK_WORKER_TOKEN=token-panjang
+MUSETALK_TIMEOUT_SECONDS=1800
+```
 
-Lihat **[docs/ROADMAP.md](docs/ROADMAP.md)** untuk rencana menuju SaaS penuh (langganan/billing, storage, worker).
+Jika worker tidak siap, endpoint lipsync mengembalikan error konfigurasi; OtoPost tidak membuat output palsu. Mode audio overlay tetap dapat digunakan tanpa GPU.
 
----
+## QA
 
-## Lisensi
+```bash
+cd backend
+python -m compileall app
+cd ../frontend
+npm run build
+```
 
-MIT — lihat [LICENSE](LICENSE).
+Media smoke test dan struktur lengkap dijelaskan di `docs/ARCHITECTURE.md`; endpoint di `docs/API.md`.
+
+## Batas produksi saat ini
+
+Sebelum menjual ke banyak pengguna: pindahkan SQLite ke Postgres, JobStore ke Redis, file ke R2/S3 signed URLs, tambahkan rate limit/observability/backup, dan deploy staging. Lisensi MIT; lihat `LICENSE`.

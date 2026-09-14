@@ -2,56 +2,74 @@ services:
   backend:
     build: ./backend
     container_name: otopost-backend
-    ports:
-      - "8000:8000"
+    ports: ["5000:8000"]
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
-      CLIP_SERVER_TOKEN: ${CLIP_SERVER_TOKEN:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:5000}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      CLIP_WORK_DIR: /data/clips
       YTDLP_COOKIES: ${YTDLP_COOKIES:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
-      # Auth & DB (Fase 0)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       DATABASE_URL: ${DATABASE_URL:-}
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
       CREDENTIAL_ENC_KEY: ${CREDENTIAL_ENC_KEY:-}
       REQUIRE_AUTH: ${REQUIRE_AUTH:-false}
       FREE_CREDITS: ${FREE_CREDITS:-30}
-      # Hardening
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       MAX_SEGMENTS_PER_JOB: ${MAX_SEGMENTS_PER_JOB:-30}
       MAX_CLIP_SECONDS: ${MAX_CLIP_SECONDS:-180}
       JOB_TTL_SECONDS: ${JOB_TTL_SECONDS:-3600}
-    volumes:
-      - clips:/data/clips
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-100}
+      BILLING_ENABLED: ${BILLING_ENABLED:-true}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-simulate}
+      BILLING_SIMULATE_ALLOW: ${BILLING_SIMULATE_ALLOW:-false}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+      MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+      MUSETALK_WORKER_URL: ${MUSETALK_WORKER_URL:-}
+      MUSETALK_WORKER_TOKEN: ${MUSETALK_WORKER_TOKEN:-}
+      MUSETALK_TIMEOUT_SECONDS: ${MUSETALK_TIMEOUT_SECONDS:-1800}
+    volumes: [clips:/data/clips]
     restart: unless-stopped
 
-  # Frontend Next.js — opsional. Bisa juga dideploy ke Vercel.
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:5000}
+        NEXT_PUBLIC_REQUIRE_AUTH: ${NEXT_PUBLIC_REQUIRE_AUTH:-false}
     container_name: otopost-frontend
-    ports:
-      - "3000:3000"
+    ports: ["3000:3000"]
     environment:
-      # Catatan: NEXT_PUBLIC_* di-inline saat build. Rebuild image bila diubah.
-      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8000}
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:5000}
       NEXT_PUBLIC_REQUIRE_AUTH: ${NEXT_PUBLIC_REQUIRE_AUTH:-false}
-    depends_on:
-      - backend
+    depends_on: [backend]
     restart: unless-stopped
     profiles: ["with-frontend"]
 
-  # ===== Postgres opsional (produksi) — set DATABASE_URL untuk memakainya =====
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_USER: otopost
-  #     POSTGRES_PASSWORD: otopost
-  #     POSTGRES_DB: otopost
-  #   volumes: [pgdata:/var/lib/postgresql/data]
-  # redis:
-  #   image: redis:7-alpine
+  musetalk:
+    build:
+      context: .
+      dockerfile: workers/musetalk/Dockerfile
+    container_name: otopost-musetalk
+    profiles: ["gpu"]
+    ports: ["9000:9000"]
+    gpus: all
+    environment:
+      WORKER_TOKEN: ${MUSETALK_WORKER_TOKEN:-}
+      PUBLIC_BASE_URL: ${MUSETALK_PUBLIC_BASE_URL:-http://localhost:9000}
+      MUSETALK_GPU_ID: ${MUSETALK_GPU_ID:-0}
+      MUSETALK_BATCH_SIZE: ${MUSETALK_BATCH_SIZE:-8}
+      JOB_TIMEOUT_SECONDS: ${MUSETALK_TIMEOUT_SECONDS:-1800}
+      AUTO_DOWNLOAD_MODELS: ${AUTO_DOWNLOAD_MODELS:-0}
+    volumes:
+      - musetalk-models:/opt/MuseTalk/models
+      - musetalk-data:/data/musetalk
+    restart: unless-stopped
 
 volumes:
   clips:
-  # pgdata:
+  musetalk-models:
+  musetalk-data:

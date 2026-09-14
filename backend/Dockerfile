@@ -7,6 +7,8 @@ ENV PYTHONUNBUFFERED=1 \
 # ffmpeg untuk potong/encode video; lib untuk OpenCV headless
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    fonts-dejavu-core \
+    fonts-liberation2 \
     libglib2.0-0 \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
