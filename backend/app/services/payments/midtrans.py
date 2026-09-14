@@ -1,16 +1,10 @@
-"""Integrasi Midtrans Snap (QRIS, e-wallet, VA, kartu).
-
-Checkout membuat transaksi Snap lalu mengarahkan user ke redirect_url Snap.
-Pelunasan dikonfirmasi lewat webhook server-to-server di /billing/webhook/midtrans
-(atur Notification URL di dashboard Midtrans ke endpoint tersebut).
-Memakai urllib stdlib agar tidak menambah dependency.
-"""
+"""Integrasi Midtrans Snap (QRIS, e-wallet, VA, kartu)."""
 import base64
 import hashlib
 import json
 import urllib.error
 import urllib.request
-from typing import Dict
+from typing import Dict, Optional
 
 from ...core.config import settings
 from ...db import models
@@ -26,9 +20,15 @@ def _snap_url(is_production: bool) -> str:
 class MidtransProvider(PaymentProvider):
     name = "midtrans"
 
-    def __init__(self) -> None:
-        self.server_key = settings.midtrans_server_key
-        self.is_production = settings.midtrans_is_production
+    def __init__(
+        self,
+        server_key: Optional[str] = None,
+        is_production: Optional[bool] = None,
+    ) -> None:
+        self.server_key = settings.midtrans_server_key if server_key is None else server_key
+        self.is_production = (
+            settings.midtrans_is_production if is_production is None else is_production
+        )
 
     def create_checkout(
         self, order: models.Order, user: models.User, return_url: str
@@ -48,7 +48,7 @@ class MidtransProvider(PaymentProvider):
                     "id": order.plan,
                     "price": int(order.amount),
                     "quantity": 1,
-                    "name": (f"OtoPost {order.plan.title()} (30 hari)")[:50],
+                    "name": (f"OtoPost {order.plan.title()} ({order.duration_days} hari)")[:50],
                 }
             ],
             "callbacks": {"finish": return_url},
@@ -68,9 +68,9 @@ class MidtransProvider(PaymentProvider):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 out = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", "ignore")
-            raise RuntimeError(f"Midtrans error {e.code}: {detail}")
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "ignore")
+            raise RuntimeError(f"Midtrans error {exc.code}: {detail}")
         return CheckoutResult(
             redirect_url=str(out.get("redirect_url") or ""),
             token=str(out.get("token") or ""),
