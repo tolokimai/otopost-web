@@ -130,6 +130,7 @@ def parse_plan_ai(raw: str, start_date: date, duration_days: int, target_count: 
         if not title:
             continue
         items.append({"scheduledDate": start_date + timedelta(days=offset), "channel": channel, "format": _text(value.get("format") or workflow.replace("-", " ").title(), 80), "pillar": _text(value.get("pillar"), 160), "title": title, "hook": _text(value.get("hook"), 2000), "angle": _text(value.get("angle"), 2000), "objective": _text(value.get("objective") or "Awareness", 160), "cta": _text(value.get("cta"), 2000), "brief": _text(value.get("brief"), 6000), "keywords": _list(value.get("keywords"), 30), "workflow": workflow, "sortOrder": index})
-    if len(items) < min(target_count, 3):
-        raise ValueError("AI menghasilkan terlalu sedikit ide konten")
+    minimum = min(target_count, max(3, (target_count * 2 + 2) // 3))
+    if len(items) < minimum:
+        raise ValueError(f"AI menghasilkan terlalu sedikit ide konten ({len(items)}/{target_count})")
     return strategy, items
