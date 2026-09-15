@@ -76,6 +76,8 @@ def create_persona(req: PersonaCreate, user: models.User = Depends(get_current_u
     first = db.query(cm.Persona.id).filter(cm.Persona.user_id == user.id).first() is None
     row = cm.Persona(user_id=user.id, name=req.name.strip(), is_default=req.isDefault or first)
     _apply(row, req.model_dump())
+    if first:
+        row.is_default = True
     if row.is_default:
         _clear_defaults(db, user.id)
     db.add(row)
