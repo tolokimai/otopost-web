@@ -1,11 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
+import { api, type StudioMenu } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+
+const CONTENT_ENGINE_IDS = new Set(["persona", "content-plan", "content-library"]);
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
+  const [engineMenus, setEngineMenus] = useState<StudioMenu[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setEngineMenus([]);
+      return;
+    }
+    api.getStudioMenus()
+      .then((data) => setEngineMenus(data.menus.filter((menu) => CONTENT_ENGINE_IDS.has(menu.id) && menu.isReady)))
+      .catch(() => setEngineMenus([]));
+  }, [user]);
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 py-5">
       <Link href="/" className="flex items-center gap-2">
@@ -23,13 +39,11 @@ export default function Header() {
         <Link href="/pricing" className="text-slate-300 hover:text-white">
           Harga
         </Link>
-        {!loading && user ? (
-          <>
-            <Link href="/personas" className="text-slate-300 hover:text-white">Persona</Link>
-            <Link href="/planner" className="text-slate-300 hover:text-white">Planner</Link>
-            <Link href="/library" className="text-slate-300 hover:text-white">Library</Link>
-          </>
-        ) : null}
+        {!loading && user ? engineMenus.map((menu) => (
+          <Link key={menu.id} href={menu.href} className="text-slate-300 hover:text-white">
+            {menu.label}
+          </Link>
+        )) : null}
         {loading ? null : user ? (
           <>
             {user.isAdmin ? (
