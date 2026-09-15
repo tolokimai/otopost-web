@@ -84,6 +84,25 @@ export default function CarouselStudio() {
   const isLight = ["Solid Light", "Minimal"].includes(design.backgroundTheme) && !current?.imageBase64;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const handoffTitle = params.get("title") || params.get("topic") || "";
+    const hook = params.get("hook") || "";
+    const brief = params.get("brief") || "";
+    const cta = params.get("cta") || "";
+    const targetAudience = params.get("audience") || "";
+    if (handoffTitle) { setTitle(handoffTitle); setTopic(handoffTitle); }
+    if (targetAudience) setAudience(targetAudience);
+    if (handoffTitle || hook || brief || cta) {
+      setSlides([
+        { headline: hook || handoffTitle || "Hook utama", body: brief || "Jelaskan masalah utama audiens.", subtext: "HOOK" },
+        { headline: handoffTitle || "Insight utama", body: brief || "Uraikan insight dan langkah praktis.", subtext: "INSIGHT" },
+        { headline: cta || "Ajak audiens bertindak", body: "Sesuaikan penutup dan CTA sebelum render.", subtext: "CTA" },
+      ]);
+      setSlideCount(3);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     api.carouselProjects().then((data) => setProjects(data.projects)).catch(() => undefined);
   }, [user]);

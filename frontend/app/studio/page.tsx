@@ -8,6 +8,9 @@ import { api, type StudioMenu } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const FALLBACK: StudioMenu[] = [
+  { id: "persona", label: "Brand Persona", description: "Fondasi audiens, offer, tone, dan pilar konten.", icon: "🧬", href: "/personas", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 1 },
+  { id: "content-plan", label: "Content Planner", description: "Kalender konten AI 7/30 hari dari persona.", icon: "🗓️", href: "/planner", isEnabled: true, isReady: true, requiredPlan: "creator", sortOrder: 2 },
+  { id: "content-library", label: "Content Library", description: "Review, approval, produksi, jadwal, dan hasil.", icon: "🗂️", href: "/library", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 3 },
   { id: "podcast", label: "Podcast Clip", description: "Ubah podcast panjang jadi klip viral.", icon: "✂️", href: "/studio/podcast", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 10 },
   { id: "carousel", label: "Carousel", description: "Buat dan render carousel siap posting.", icon: "🖼️", href: "/studio/carousel", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 20 },
   { id: "self-video", label: "Video Sendiri", description: "Hook banner, subtitle, dan format vertikal.", icon: "🎥", href: "/studio/self-video", isEnabled: true, isReady: false, requiredPlan: "creator", sortOrder: 30 },
@@ -32,7 +35,7 @@ export default function StudioHub() {
         <div className="text-sm font-semibold text-brand-accent">CONTENT PRODUCTION OS</div>
         <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">Pilih workflow Studio</h1>
         <p className="mt-3 max-w-2xl text-slate-400">
-          Produksi klip, carousel, dan remake dari satu tempat. Susunan serta akses menu dikendalikan admin tanpa redeploy.
+          Mulai dari Persona, rencanakan konten, approve di Library, lalu produksi lewat workflow Studio. Susunan serta akses menu dikendalikan admin tanpa redeploy.
         </p>
       </section>
 

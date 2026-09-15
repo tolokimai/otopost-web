@@ -28,6 +28,12 @@ export default function RemakeStudio() {
   const audioAssets = useMemo(() => assets.filter((item) => item.kind === "audio"), [assets]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const subtitle = [params.get("hook"), params.get("cta")].filter(Boolean).join("\n\n");
+    if (subtitle) setSubtitleText(subtitle);
+  }, []);
+
+  useEffect(() => {
     if (!loading && !user) router.replace("/login?next=/studio/remake");
   }, [loading, user, router]);
 

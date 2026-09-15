@@ -42,10 +42,11 @@ Status dibedakan antara **kode tersedia** dan **teruji pada infrastruktur produk
 - [ ] Self Video: hook banner, subtitle, script AI
 - [ ] AI Video: provider Veo/Imagen dengan job queue
 
-## Sistem Otomasi Konten — berikutnya
-- [ ] Persona CRUD + generator AI (brand, niche, audiens, tone, bahasa)
-- [ ] Content Plan 7/30 hari dan tombol kirim ke setiap Studio workflow
-- [ ] Content library + status draft/review/approved/scheduled/published/failed
+## Sistem Otomasi Konten — aktif
+- [x] Persona CRUD + generator AI (brand, niche, audiens, pain point, offer, tone, bahasa, pilar)
+- [x] Content Plan 7/30 hari dan handoff prefilled ke Studio workflow yang ready
+- [x] Content Library + status draft/review/approved/in_production/scheduled/published/failed
+- [x] Approval gate, ownership isolation, paket/feature gate, dan seed menu idempoten
 - [ ] Kalender, retry, audit log
 - [ ] Adapter TikTok, Instagram/Facebook, YouTube (approval-gated)
 - [ ] Analytics konten, revenue attribution, eksperimen hook

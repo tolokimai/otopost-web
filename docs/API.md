@@ -33,6 +33,20 @@ Base URL local: `http://localhost:5000`. JSON endpoints use `Authorization: Bear
 
 Bootstrap owner dengan `ADMIN_EMAILS=email@owner.com`. Existing user dengan email tersebut dipromosikan saat startup.
 
+## Content Engine
+- `GET|POST /personas`
+- `GET|PUT|DELETE /personas/{id}`
+- `POST /personas/generate` — draft AI, 1 kredit setelah hasil valid
+- `GET /content-plans`
+- `POST /content-plans/generate` — kalender 7/30 hari, 1 kredit setelah hasil valid
+- `GET|PUT|DELETE /content-plans/{id}`
+- `GET|POST /content-library`
+- `GET|PUT|DELETE /content-library/{id}`
+- `POST /content-library/{id}/duplicate`
+- `POST /content-library/{id}/handoff` — hanya status `approved`
+
+Semua endpoint membutuhkan JWT dan dibatasi ke data milik pengguna. Handoff memeriksa ulang enablement, readiness, dan paket minimum workflow tujuan di server.
+
 ## Podcast Clip
 - `POST /transcript`
 - `POST /ai/analyze-transcript`
