@@ -27,7 +27,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 function qs(values: Record<string, string | number | undefined | null>): string {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== "") params.set(key, String(value)); });
-  return params.size ? `?${params}` : "";
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 export const contentApi = {
