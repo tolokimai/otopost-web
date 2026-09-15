@@ -71,7 +71,7 @@ def _ensure_schema() -> None:
 
 def init_db() -> None:
     """Buat/migrasikan tabel lalu seed katalog; aman dipanggil berulang."""
-    from . import models  # noqa: F401  pastikan model ter-register
+    from . import content_models, models  # noqa: F401  pastikan model ter-register
 
     Base.metadata.create_all(bind=engine)
     _ensure_schema()
@@ -80,3 +80,7 @@ def init_db() -> None:
 
     with SessionLocal() as db:
         seed_defaults(db)
+
+        from ..services.content_engine import seed_content_engine
+
+        seed_content_engine(db)

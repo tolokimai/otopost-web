@@ -23,6 +23,13 @@ export default function Header() {
         <Link href="/pricing" className="text-slate-300 hover:text-white">
           Harga
         </Link>
+        {!loading && user ? (
+          <>
+            <Link href="/personas" className="text-slate-300 hover:text-white">Persona</Link>
+            <Link href="/planner" className="text-slate-300 hover:text-white">Planner</Link>
+            <Link href="/library" className="text-slate-300 hover:text-white">Library</Link>
+          </>
+        ) : null}
         {loading ? null : user ? (
           <>
             {user.isAdmin ? (

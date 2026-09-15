@@ -46,6 +46,7 @@ export default function StudioPage() {
   const requireAuth = process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true";
 
   const [url, setUrl] = useState("");
+  const [plannerBrief, setPlannerBrief] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [video, setVideo] = useState<TranscriptResponse | null>(null);
@@ -60,6 +61,14 @@ export default function StudioPage() {
   const [reframe, setReframe] = useState(true);
 
   const selectedCount = segments.filter((s) => s.selected).length;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topic = params.get("topic") || params.get("title") || "";
+    const hook = params.get("hook") || "";
+    const brief = params.get("brief") || "";
+    if (topic || hook || brief) setPlannerBrief([topic, hook, brief].filter(Boolean).join(" · "));
+  }, []);
 
   useEffect(() => {
     if (requireAuth && !authLoading && !user) {
@@ -203,6 +212,13 @@ export default function StudioPage() {
       {error ? (
         <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           {error}
+        </div>
+      ) : null}
+
+      {plannerBrief ? (
+        <div className="mb-4 rounded-xl border border-brand/30 bg-brand/10 p-4 text-sm">
+          <div className="font-semibold text-brand-accent">Brief dari Content Library</div>
+          <p className="mt-1 text-slate-300">{plannerBrief}</p>
         </div>
       ) : null}
 
