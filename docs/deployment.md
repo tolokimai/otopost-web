@@ -1,5 +1,9 @@
 # Deployment & Operations Guide
 
+## Runtime baseline
+- Backend: Python 3.13.
+- Frontend build: Node.js 20.
+
 ## Environments
 - Development: Local FastAPI + Next.js + SQLite.
 - Staging: Docker Compose with PostgreSQL + Redis + Mock worker.
@@ -12,7 +16,7 @@
 
 ## Graceful Operations
 - Storage: Assets written to dedicated volume with atomic write and unlink on failure.
-- Database: Automatic idempotent migrations on startup (`_ensure_schema`).
+- Database: versioned, forward-only migrations recorded in `schema_migrations`.
 
 ## Frontend API URL
 - `NEXT_PUBLIC_API_BASE` is embedded in the frontend during `next build`; set it to the public HTTPS backend URL before building (for example, `https://backend.desouls.com`).
