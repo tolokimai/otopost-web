@@ -12,28 +12,19 @@ class UserRepository(BaseRepository[models.User]):
         super().__init__(models.User, db)
 
     def get_by_email(self, email: str) -> Optional[models.User]:
-        return (
-            self.db.query(models.User)
-            .filter(models.User.email == email.lower().strip())
-            .first()
-        )
+        return self.db.query(models.User).filter(models.User.email == email.lower().strip()).first()
 
     def list_paginated(
         self, search: str = "", limit: int = 25, offset: int = 0
     ) -> Tuple[List[models.User], int]:
         query = self.db.query(models.User)
         if search:
-            like = f"%{search}%"
+            like = f"%{search.strip()}%"
             query = query.filter(
                 or_(models.User.email.ilike(like), models.User.name.ilike(like))
             )
         total = query.count()
-        rows = (
-            query.order_by(models.User.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        rows = query.order_by(models.User.created_at.desc()).offset(offset).limit(limit).all()
         return rows, total
 
     def count_total(self) -> int:
@@ -45,12 +36,8 @@ class UserRepository(BaseRepository[models.User]):
     def count_paid(self) -> int:
         return self.db.query(models.User).filter(models.User.plan != "free").count()
 
-    def get_credentials(self, user_id: str) -> List[models.Credential]:
-        return (
-            self.db.query(models.Credential)
-            .filter(models.Credential.user_id == user_id)
-            .all()
-        )
+    def list_credentials(self, user_id: str) -> List[models.Credential]:
+        return self.db.query(models.Credential).filter(models.Credential.user_id == user_id).all()
 
     def get_credential(self, user_id: str, provider: str) -> Optional[models.Credential]:
         return (
@@ -62,17 +49,23 @@ class UserRepository(BaseRepository[models.User]):
             .first()
         )
 
-    def upsert_credential(
+    def save_credential(
         self, user_id: str, provider: str, encrypted_value: str
     ) -> models.Credential:
         credential = self.get_credential(user_id, provider)
         if credential is None:
             credential = models.Credential(
-                user_id=user_id, provider=provider, encrypted_value=encrypted_value
+                user_id=user_id,
+                provider=provider,
+                encrypted_value=encrypted_value,
             )
-            self.db.add(credential)
         else:
             credential.encrypted_value = encrypted_value
-        self.db.commit()
-        self.db.refresh(credential)
-        return credential
+        return self.add(credential)
+
+    def delete_credential(self, user_id: str, provider: str) -> bool:
+        credential = self.get_credential(user_id, provider)
+        if credential is None:
+            return False
+        self.delete(credential)
+        return True
