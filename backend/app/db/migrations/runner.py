@@ -1,7 +1,8 @@
 import importlib
 from collections.abc import Iterable
 
-from sqlalchemy import Engine, text
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 MIGRATION_MODULES: tuple[str, ...] = (
     "app.db.migrations.versions.v0001_legacy_columns",
