@@ -5,17 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
+import { Confirm } from "@/components/ui/Confirm";
+import { Toast } from "@/components/ui/Toast";
 import { api, type Order } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 
 export default function AccountPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const { t, locale } = useTranslation();
+
   const [geminiKey, setGeminiKey] = useState("");
   const [configured, setConfigured] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
@@ -28,7 +31,7 @@ export default function AccountPage() {
       const g = c.providers.find((p) => p.provider === "gemini");
       setConfigured(Boolean(g?.configured));
     } catch {
-      // abaikan
+      // Non-critical, ignore
     }
   }, []);
 
@@ -37,7 +40,7 @@ export default function AccountPage() {
       const r = await api.getOrders();
       setOrders(r.orders);
     } catch {
-      // abaikan
+      // Non-critical, ignore
     }
   }, []);
 
@@ -50,151 +53,157 @@ export default function AccountPage() {
 
   async function saveKey() {
     setBusy(true);
-    setMsg(null);
-    setError(null);
     try {
       const res = await api.putCredential({ provider: "gemini", value: geminiKey.trim() });
       setConfigured(res.configured);
       setGeminiKey("");
-      setMsg(res.configured ? "API key Gemini tersimpan (terenkripsi)." : "API key dihapus.");
+      Toast.success(res.configured ? t("auth.key_saved") : t("auth.key_deleted"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      Toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeKey() {
-    setBusy(true);
-    setMsg(null);
-    setError(null);
-    try {
-      await api.putCredential({ provider: "gemini", value: "" });
-      setConfigured(false);
-      setGeminiKey("");
-      setMsg("API key dihapus.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
+  function removeKey() {
+    Confirm.delete(t("auth.gemini_key_title"), async () => {
+      setBusy(true);
+      try {
+        await api.putCredential({ provider: "gemini", value: "" });
+        setConfigured(false);
+        setGeminiKey("");
+        Toast.success(t("auth.key_deleted"));
+      } catch (err) {
+        Toast.error(err instanceof Error ? err.message : String(err));
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   if (loading || !user) {
     return (
       <main className="mx-auto max-w-3xl px-4">
         <Header />
-        <p className="py-10 text-center text-sm text-slate-400">Memuat…</p>
+        <div className="py-20 text-center text-sm text-muted">
+          <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+          <p>{t("common.loading")}</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-24">
+    <main className="mx-auto max-w-4xl px-4 pb-24 text-token">
       <Header />
-      <h1 className="mb-6 text-2xl font-extrabold">Akun</h1>
+      <h1 className="mb-6 text-2xl font-extrabold tracking-tight">
+        {t("auth.account_settings")}
+      </h1>
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-xs text-slate-400">Email</div>
-          <div className="mt-1 truncate font-semibold">{user.email}</div>
+      <section className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-token bg-surface p-5 shadow-sm">
+          <div className="text-xs font-semibold text-muted">{t("auth.email")}</div>
+          <div className="mt-1 truncate font-bold text-base">{user.email}</div>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-xs text-slate-400">Paket</div>
-          <div className="mt-1 font-semibold capitalize">{user.plan}</div>
-          {user.planExpiresAt ? (
-            <div className="mt-1 text-xs text-slate-500">
-              Berlaku s/d {new Date(user.planExpiresAt).toLocaleDateString("id-ID")}
+
+        <div className="rounded-2xl border border-token bg-surface p-5 shadow-sm">
+          <div className="text-xs font-semibold text-muted">{t("auth.current_plan")}</div>
+          <div className="mt-1 font-bold text-base capitalize">{user.plan}</div>
+          {user.planExpiresAt && (
+            <div className="mt-1 text-xs text-muted">
+              {t("auth.plan_expires", {
+                date: new Date(user.planExpiresAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-US"),
+              })}
             </div>
-          ) : null}
+          )}
           <Link
             href="/pricing"
-            className="mt-2 inline-block text-xs font-semibold text-brand-accent"
+            className="mt-2 inline-block text-xs font-bold text-brand hover:underline"
           >
-            {user.plan === "free" ? "Upgrade →" : "Perpanjang / ubah →"}
+            {user.plan === "free" ? t("auth.upgrade_plan") : t("auth.renew_plan")}
           </Link>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-xs text-slate-400">Kredit</div>
-          <div className="mt-1 font-semibold">{user.credits}</div>
+
+        <div className="rounded-2xl border border-token bg-surface p-5 shadow-sm">
+          <div className="text-xs font-semibold text-muted">{t("auth.credits_remaining")}</div>
+          <div className="mt-1 font-extrabold text-2xl text-brand">{user.credits}</div>
         </div>
       </section>
 
-      <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <h2 className="mb-1 text-lg font-bold">API Key Gemini (opsional)</h2>
-        <p className="mb-3 text-sm text-slate-400">
-          Pakai API key Google Gemini milikmu sendiri agar kuota AI tidak dibatasi server.
-          Disimpan terenkripsi di server. Status:{" "}
-          <span className={configured ? "text-green-400" : "text-slate-300"}>
-            {configured ? "sudah diatur" : "belum ada"}
+      <section className="mb-8 rounded-2xl border border-token bg-surface p-6 shadow-sm">
+        <h2 className="mb-1 text-base font-bold">{t("auth.gemini_key_title")}</h2>
+        <p className="mb-4 text-xs text-muted leading-relaxed">
+          {t("auth.gemini_key_desc")}{" "}
+          <span className="font-semibold">
+            Status:{" "}
+            <span className={configured ? "text-emerald-400" : "text-amber-400"}>
+              {configured ? t("auth.key_configured") : t("auth.key_not_configured")}
+            </span>
           </span>
-          .
         </p>
-        {msg ? (
-          <div className="mb-3 rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">
-            {msg}
-          </div>
-        ) : null}
-        {error ? (
-          <div className="mb-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-2 sm:flex-row">
+
+        <div className="flex flex-col gap-3 sm:flex-row">
           <input
             type="password"
             value={geminiKey}
             onChange={(e) => setGeminiKey(e.target.value)}
-            placeholder="AIza…"
-            className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand"
+            placeholder="AIzaSy…"
+            className="flex-1 rounded-xl border border-token bg-surface px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
           />
           <button
+            type="button"
             onClick={saveKey}
             disabled={busy || !geminiKey.trim()}
-            className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-md hover:brightness-110 disabled:opacity-50 transition-all"
           >
-            Simpan
+            {busy ? t("common.processing") : t("auth.save_btn")}
           </button>
-          {configured ? (
+          {configured && (
             <button
+              type="button"
               onClick={removeKey}
               disabled={busy}
-              className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold disabled:opacity-50"
+              className="rounded-xl border border-token bg-surface-hover px-5 py-2.5 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 disabled:opacity-50 transition-all"
             >
-              Hapus
+              {t("auth.delete_btn")}
             </button>
-          ) : null}
+          )}
         </div>
       </section>
 
-      <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Riwayat pembayaran</h2>
-          <Link href="/pricing" className="text-xs font-semibold text-brand-accent">
-            Beli paket →
+      <section className="mb-8 rounded-2xl border border-token bg-surface p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold">{t("auth.order_history")}</h2>
+          <Link href="/pricing" className="text-xs font-bold text-brand hover:underline">
+            {t("auth.upgrade_plan")}
           </Link>
         </div>
+
         {orders.length === 0 ? (
-          <p className="text-sm text-slate-400">Belum ada transaksi.</p>
+          <p className="text-sm text-muted">{t("auth.no_orders")}</p>
         ) : (
-          <div className="divide-y divide-white/5 text-sm">
+          <div className="divide-y divide-token text-sm">
             {orders.map((o) => (
-              <div key={o.orderId} className="flex items-center justify-between py-2">
+              <div key={o.orderId} className="flex items-center justify-between py-3">
                 <div>
-                  <div className="font-semibold capitalize">{o.plan}</div>
-                  <div className="text-xs text-slate-500">
-                    {o.createdAt ? new Date(o.createdAt).toLocaleString("id-ID") : o.orderId}
+                  <div className="font-bold capitalize">{o.plan}</div>
+                  <div className="text-xs text-muted">
+                    {o.createdAt
+                      ? new Date(o.createdAt).toLocaleString(locale === "id" ? "id-ID" : "en-US")
+                      : o.orderId}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold">Rp{o.amount.toLocaleString("id-ID")}</div>
+                  <div className="font-bold">
+                    Rp{o.amount.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
+                  </div>
                   <div
-                    className={`text-xs ${
+                    className={`text-xs font-semibold uppercase ${
                       o.status === "paid"
-                        ? "text-green-400"
+                        ? "text-emerald-400"
                         : o.status === "pending"
-                          ? "text-yellow-400"
-                          : "text-slate-500"
+                          ? "text-amber-400"
+                          : "text-muted"
                     }`}
                   >
                     {o.status}
@@ -207,13 +216,14 @@ export default function AccountPage() {
       </section>
 
       <button
+        type="button"
         onClick={() => {
           logout();
           router.replace("/");
         }}
-        className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold"
+        className="rounded-xl border border-token bg-surface-hover px-6 py-2.5 text-sm font-semibold text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all"
       >
-        Keluar
+        {t("auth.logout")}
       </button>
     </main>
   );

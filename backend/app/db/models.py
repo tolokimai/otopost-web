@@ -48,6 +48,46 @@ class User(Base):
     )
 
 
+class Persona(Base):
+    __tablename__ = "personas"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    niche: Mapped[str] = mapped_column(String(160), default="")
+    tone_of_voice: Mapped[str] = mapped_column(Text, default="")
+    target_audience: Mapped[str] = mapped_column(Text, default="")
+    signature_hook: Mapped[str] = mapped_column(Text, default="")
+    dos: Mapped[str] = mapped_column(Text, default="")
+    donts: Mapped[str] = mapped_column(Text, default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ContentPlan(Base):
+    __tablename__ = "content_plans"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    persona_id: Mapped[Optional[str]] = mapped_column(
+        String(32), ForeignKey("personas.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    day_number: Mapped[int] = mapped_column(Integer, default=1)
+    scheduled_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    topic: Mapped[str] = mapped_column(Text, nullable=False)
+    hook: Mapped[str] = mapped_column(Text, default="")
+    outline: Mapped[str] = mapped_column(Text, default="")
+    format: Mapped[str] = mapped_column(String(32), default="CAROUSEL")
+    status: Mapped[str] = mapped_column(String(24), default="DRAFT", index=True)
+    caption: Mapped[str] = mapped_column(Text, default="")
+    hashtags: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Credential(Base):
     __tablename__ = "credentials"
     __table_args__ = (UniqueConstraint("user_id", "provider", name="uq_user_provider"),)
@@ -196,3 +236,20 @@ class MediaAsset(Base):
     relative_path: Mapped[str] = mapped_column(String(500), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    """Immutable audit trail for security and governance compliance."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    actor_id: Mapped[Optional[str]] = mapped_column(String(32), index=True, nullable=True)
+    action: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
+    resource_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    result: Mapped[str] = mapped_column(String(20), default="SUCCESS")
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    detail_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+

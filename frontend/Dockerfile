@@ -7,6 +7,8 @@ RUN npm install --no-audit --no-fund
 # ---- build ----
 FROM node:20-slim AS build
 WORKDIR /app
+ARG NEXT_PUBLIC_API_BASE=http://localhost:5000
+ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

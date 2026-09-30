@@ -1,0 +1,18 @@
+{
+  "roadmap_content_types": "Jenis konten",
+  "format_carousel": "Carousel",
+  "format_podcast_clip": "Clip Video",
+  "format_remake": "Lipsync",
+  "format_reels": "Reels",
+  "studio_plan_title": "Plan dari Content Plan",
+  "studio_plan_meta": "Hari {day} · {format}",
+  "studio_plan_save": "Simpan perubahan plan",
+  "studio_plan_saving": "Menyimpan...",
+  "studio_plan_saved": "Plan berhasil diperbarui.",
+  "studio_plan_save_error": "Gagal memperbarui plan.",
+  "field_topic": "Topik",
+  "field_hook": "Hook",
+  "field_outline": "Outline",
+  "field_caption": "Caption",
+  "field_hashtags": "Hashtag"
+}

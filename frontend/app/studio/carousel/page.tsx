@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
+import CarouselCanvas from "@/components/carousel/CarouselCanvas";
+import CarouselInspector from "@/components/carousel/CarouselInspector";
 import {
   api,
   mediaUrl,
@@ -12,8 +14,14 @@ import {
   type CarouselProject,
   type CarouselRender,
   type CarouselSlide,
+  type ContentPlanItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
+import { consumeStudioPlanPrefill } from "@/lib/studio-prefill";
+import StudioPlanPrefill from "@/components/content-plan/StudioPlanPrefill";
+import { Toast } from "@/components/ui/Toast";
+import { Confirm } from "@/components/ui/Confirm";
 
 const DEFAULT_DESIGN: CarouselDesign = {
   aspectRatio: "4:5",
@@ -36,24 +44,6 @@ const DEFAULT_SLIDES: CarouselSlide[] = [
   { headline: "Ajak audiens bertindak", body: "Tutup dengan CTA yang selaras dengan tujuan kontenmu.", subtext: "CTA" },
 ];
 
-const ASPECT_CLASS: Record<string, string> = {
-  "1:1": "aspect-square",
-  "4:5": "aspect-[4/5]",
-  "3:4": "aspect-[3/4]",
-  "9:16": "aspect-[9/16]",
-  "16:9": "aspect-video",
-};
-
-const THEMES: Record<string, string> = {
-  "Solid Dark": "from-zinc-950 to-zinc-900",
-  "Solid Light": "from-slate-100 to-slate-300",
-  "Gradient Indigo": "from-slate-950 to-indigo-700",
-  "Gradient Sunset": "from-rose-950 to-orange-500",
-  "Cyber Neon": "from-fuchsia-950 to-indigo-900",
-  Luxury: "from-zinc-950 to-amber-950",
-  Minimal: "from-white to-slate-200",
-};
-
 function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -63,9 +53,11 @@ function readDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function CarouselStudio() {
+export default function CarouselStudioPage() {
   const { user } = useAuth();
-  const [title, setTitle] = useState("Carousel baru");
+  const { t } = useTranslation();
+
+  const [title, setTitle] = useState("Carousel Baru");
   const [topic, setTopic] = useState("");
   const [audience, setAudience] = useState("Kreator dan pemilik bisnis");
   const [slideCount, setSlideCount] = useState(7);
@@ -76,12 +68,10 @@ export default function CarouselStudio() {
   const [projects, setProjects] = useState<CarouselProject[]>([]);
   const [output, setOutput] = useState<CarouselRender | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [planPrefill, setPlanPrefill] = useState<ContentPlanItem | null>(null);
 
   const payload = useMemo<CarouselPayload>(() => ({ title, slides, design }), [title, slides, design]);
   const current = slides[Math.min(active, slides.length - 1)];
-  const isLight = ["Solid Light", "Minimal"].includes(design.backgroundTheme) && !current?.imageBase64;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -107,6 +97,31 @@ export default function CarouselStudio() {
     api.carouselProjects().then((data) => setProjects(data.projects)).catch(() => undefined);
   }, [user]);
 
+  useEffect(() => {
+    const plan = consumeStudioPlanPrefill();
+    if (!plan) return;
+    setPlanPrefill(plan);
+    applyPlanPrefill(plan);
+  }, []);
+
+  function applyPlanPrefill(plan: ContentPlanItem) {
+    setTitle(plan.topic);
+    setTopic(plan.topic);
+    setSlides([
+      { headline: plan.hook || plan.topic, body: plan.topic, subtext: "HOOK" },
+      { headline: "Outline & Insight", body: plan.outline, subtext: "INSIGHT" },
+      {
+        headline: "Caption & CTA",
+        body: [plan.caption, plan.hashtags].filter(Boolean).join("\n\n"),
+        subtext: "CTA",
+      },
+    ]);
+    setSlideCount(3);
+    setActive(0);
+    setProjectId(null);
+    setOutput(null);
+  }
+
   function patchSlide(index: number, patch: Partial<CarouselSlide>) {
     setSlides((items) => items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
@@ -117,9 +132,15 @@ export default function CarouselStudio() {
   }
 
   function removeSlide(index: number) {
-    if (slides.length <= 1) return;
-    setSlides((items) => items.filter((_, i) => i !== index));
-    setActive((value) => Math.max(0, Math.min(value, slides.length - 2)));
+    if (slides.length <= 1) {
+      Toast.warning("Minimal harus ada satu slide");
+      return;
+    }
+    Confirm.delete("Hapus slide ini dari carousel?", () => {
+      setSlides((items) => items.filter((_, i) => i !== index));
+      setActive((value) => Math.max(0, Math.min(value, slides.length - 2)));
+      Toast.success("Slide berhasil dihapus");
+    });
   }
 
   function moveSlide(index: number, delta: number) {
@@ -134,21 +155,27 @@ export default function CarouselStudio() {
   }
 
   async function generate() {
-    if (!topic.trim()) return setError("Isi topik carousel dulu.");
-    setBusy("AI menyusun alur slide…");
-    setError(null);
-    setMessage(null);
+    if (!topic.trim()) {
+      Toast.warning("Masukkan topik konten carousel");
+      return;
+    }
+    setBusy("AI sedang menyusun alur slide carousel...");
     try {
       const result = await api.carouselGenerate({
-        topic: topic.trim(), audience, goal: "Edukasi dan konversi", tone: "Profesional, jelas, menarik", slideCount,
+        topic: topic.trim(),
+        audience,
+        goal: "Edukasi dan konversi",
+        tone: "Profesional, jelas, menarik",
+        slideCount,
       });
       setTitle(result.title);
       setSlides(result.slides);
       setActive(0);
       setProjectId(null);
       setOutput(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      Toast.success("Slide carousel berhasil di-generate AI!");
+    } catch (err: unknown) {
+      Toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -156,35 +183,32 @@ export default function CarouselStudio() {
 
   async function save() {
     if (!user) {
-      setError("Masuk dulu untuk menyimpan project.");
+      Toast.warning("Silakan masuk akun untuk menyimpan project");
       return;
     }
-    setBusy("Menyimpan project…");
-    setError(null);
+    setBusy("Menyimpan project...");
     try {
       const saved = projectId
         ? await api.carouselUpdateProject(projectId, payload)
         : await api.carouselCreateProject(payload);
       setProjectId(saved.id);
       setProjects((items) => [saved, ...items.filter((item) => item.id !== saved.id)]);
-      setMessage("Project tersimpan.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      Toast.success("Project carousel berhasil disimpan");
+    } catch (err: unknown) {
+      Toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
   }
 
   async function render() {
-    setBusy("Merender PNG resolusi penuh…");
-    setError(null);
-    setMessage(null);
+    setBusy("Merender gambar PNG resolusi penuh...");
     try {
       const result = await api.carouselRender(payload);
       setOutput(result);
-      setMessage(`${result.images.length} slide dan ZIP berhasil dibuat.`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      Toast.success(`${result.images.length} slide PNG dan ZIP berhasil dirender!`);
+    } catch (err: unknown) {
+      Toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -199,103 +223,201 @@ export default function CarouselStudio() {
     setDesign(project.payload.design);
     setActive(0);
     setOutput("images" in project.output ? (project.output as CarouselRender) : null);
+    Toast.info(`Project "${project.payload.title}" dibuka`);
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-24">
+    <main className="mx-auto max-w-7xl px-4 pb-24 text-token">
       <Header />
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/studio" className="text-xs text-brand-accent">← Studio</Link>
-          <h1 className="mt-1 text-2xl font-extrabold">Carousel Studio</h1>
-          <p className="text-sm text-slate-400">AI outline, editor live, render PNG, dan export ZIP.</p>
+          <Link href="/studio" className="text-xs text-brand hover:underline font-semibold">
+            ← Studio Hub
+          </Link>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+            {t("studio.carousel_title")}
+          </h1>
+          <p className="text-xs text-muted">
+            {t("studio.carousel_desc")}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => void save()} disabled={!!busy} className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold disabled:opacity-50">Simpan</button>
-          <button onClick={() => void render()} disabled={!!busy} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Export PNG/ZIP</button>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={!!busy}
+            className="rounded-xl border border-token bg-surface hover:bg-surface-hover px-4 py-2 text-xs font-semibold text-token disabled:opacity-50 transition-all"
+          >
+            {busy === "Menyimpan project..." ? t("common.saving") : t("common.save")}
+          </button>
+          <button
+            type="button"
+            onClick={() => void render()}
+            disabled={!!busy}
+            className="rounded-xl bg-gradient-to-r from-brand to-brand-accent px-4 py-2 text-xs font-bold text-white shadow-md hover:brightness-110 disabled:opacity-50 transition-all"
+          >
+            {busy === "Merender gambar PNG resolusi penuh..." ? "Merender..." : "Export PNG / ZIP"}
+          </button>
         </div>
       </div>
 
-      {busy ? <div className="mb-4 rounded-xl border border-brand/40 bg-brand/10 p-3 text-sm">⏳ {busy}</div> : null}
-      {error ? <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</div> : null}
-      {message ? <div className="mb-4 rounded-xl border border-green-500/40 bg-green-500/10 p-3 text-sm text-green-200">{message}</div> : null}
+      {busy && (
+        <div className="sticky top-4 z-30 mb-6 flex items-center gap-3 rounded-2xl border border-brand/40 bg-surface/95 p-4 shadow-xl backdrop-blur-md text-sm text-brand font-medium">
+          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+          <span>{busy}</span>
+        </div>
+      )}
 
-      <section className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[1fr_180px_120px_auto]">
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topik, contoh: 7 cara jualan ebook" className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-brand" />
-        <input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Audiens" className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-brand" />
-        <input type="number" min={3} max={12} value={slideCount} onChange={(e) => setSlideCount(Number(e.target.value))} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm" />
-        <button onClick={() => void generate()} disabled={!!busy} className="rounded-xl bg-gradient-to-r from-brand to-brand-accent px-4 py-2 text-sm font-semibold">✨ Buat dengan AI</button>
+      {planPrefill && (
+        <StudioPlanPrefill
+          plan={planPrefill}
+          onChange={(updated) => {
+            setPlanPrefill(updated);
+            applyPlanPrefill(updated);
+          }}
+        />
+      )}
+
+      {/* Generator Toolbar */}
+      <section className="mb-6 grid gap-3 rounded-2xl border border-token bg-surface p-4 lg:grid-cols-[1fr_180px_120px_auto]">
+        <input
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder="Topik konten (contoh: 7 tips copywriting memikat)"
+          className="rounded-xl border border-token bg-surface-hover px-3.5 py-2 text-xs text-token focus:outline-none focus:border-brand"
+        />
+        <input
+          value={audience}
+          onChange={(e) => setAudience(e.target.value)}
+          placeholder="Audiens target"
+          className="rounded-xl border border-token bg-surface-hover px-3.5 py-2 text-xs text-token focus:outline-none focus:border-brand"
+        />
+        <input
+          type="number"
+          min={3}
+          max={12}
+          value={slideCount}
+          onChange={(e) => setSlideCount(Number(e.target.value))}
+          className="rounded-xl border border-token bg-surface-hover px-3 py-2 text-xs text-token focus:outline-none focus:border-brand"
+        />
+        <button
+          type="button"
+          onClick={() => void generate()}
+          disabled={!!busy}
+          className="rounded-xl bg-gradient-to-r from-brand to-brand-accent px-4 py-2 text-xs font-bold text-white shadow-md hover:brightness-110 whitespace-nowrap transition-all"
+        >
+          ✨ {t("studio.generate_btn")}
+        </button>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[260px_minmax(320px,1fr)_330px]">
-        <aside className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-          <div className="mb-2 flex items-center justify-between"><b className="text-sm">Slide ({slides.length})</b><button onClick={addSlide} className="text-xs text-brand-accent">+ Tambah</button></div>
-          <div className="max-h-[680px] space-y-2 overflow-auto">
+      {/* Editor & Preview Workspace */}
+      <div className="grid gap-6 xl:grid-cols-[260px_minmax(320px,1fr)_340px]">
+        {/* Slides Navigation */}
+        <aside className="rounded-2xl border border-token bg-surface p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-token">Slide ({slides.length})</span>
+            <button
+              type="button"
+              onClick={addSlide}
+              className="text-xs text-brand hover:underline font-semibold"
+            >
+              + Tambah
+            </button>
+          </div>
+          <div className="max-h-[640px] space-y-2 overflow-auto pr-1">
             {slides.map((slide, index) => (
-              <button key={index} onClick={() => setActive(index)} className={`w-full rounded-xl border p-3 text-left ${active === index ? "border-brand bg-brand/10" : "border-white/5 bg-black/20"}`}>
-                <div className="text-[10px] text-slate-500">SLIDE {index + 1}</div>
-                <div className="mt-1 line-clamp-2 text-xs font-semibold">{slide.headline}</div>
+              <button
+                key={index}
+                type="button"
+                onClick={() => setActive(index)}
+                className={`w-full rounded-xl border p-3 text-left transition-all ${
+                  active === index
+                    ? "border-brand bg-brand/15 shadow-sm text-brand"
+                    : "border-token bg-surface-hover hover:border-brand/40 text-token"
+                }`}
+              >
+                <div className="text-[10px] font-mono text-muted">SLIDE {index + 1}</div>
+                <div className="mt-1 line-clamp-2 text-xs font-semibold">
+                  {slide.headline || "(Tanpa Judul)"}
+                </div>
               </button>
             ))}
           </div>
-          {projects.length ? (
-            <div className="mt-4 border-t border-white/10 pt-3">
-              <div className="mb-2 text-xs text-slate-400">Project tersimpan</div>
-              <select value={projectId || ""} onChange={(e) => openProject(e.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-950 p-2 text-xs">
-                <option value="">Pilih project…</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+
+          {projects.length > 0 && (
+            <div className="mt-4 border-t border-token pt-3">
+              <div className="mb-1.5 text-xs text-muted font-medium">Buka Project Tersimpan</div>
+              <select
+                value={projectId || ""}
+                onChange={(e) => openProject(e.target.value)}
+                className="w-full rounded-xl border border-token bg-surface p-2 text-xs text-token focus:outline-none focus:border-brand"
+              >
+                <option value="">Pilih project...</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
               </select>
             </div>
-          ) : null}
+          )}
         </aside>
 
-        <section className="flex min-h-[620px] items-center justify-center rounded-2xl border border-white/10 bg-black/30 p-5">
-          {current ? (
-            <div
-              className={`relative w-full max-w-[500px] overflow-hidden rounded-xl bg-gradient-to-br shadow-2xl ${ASPECT_CLASS[design.aspectRatio] || ASPECT_CLASS["4:5"]} ${THEMES[design.backgroundTheme] || THEMES["Gradient Indigo"]}`}
-              style={{ color: isLight ? "#111827" : design.textColorHex, backgroundImage: current.imageBase64 ? `linear-gradient(#0008,#0008),url(${current.imageBase64})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
-            >
-              <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full opacity-20" style={{ backgroundColor: design.accentColorHex }} />
-              <div className="absolute inset-x-[9%] top-[12%] text-center">
-                {current.subtext ? <span className="rounded-full px-3 py-1 text-[10px] font-bold uppercase text-white" style={{ backgroundColor: design.accentColorHex }}>{current.subtext}</span> : null}
-              </div>
-              <div className="absolute inset-x-[9%] top-[25%] text-center">
-                <h2 className="text-2xl font-extrabold leading-tight sm:text-4xl" style={{ fontSize: `${design.baseFontScale * 2.25}rem`, textShadow: design.textEffect === "shadow" ? "0 4px 10px #0009" : undefined }}>{current.headline}</h2>
-              </div>
-              <div className="absolute inset-x-[13%] top-[57%] text-center text-sm leading-relaxed opacity-90 sm:text-base">{current.body}</div>
-              <div className="absolute inset-x-[9%] bottom-[6%] flex justify-between text-[10px]"><span>{design.watermarkText}</span><span>{design.showPageNumber ? `${String(active + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}` : ""}</span></div>
-            </div>
-          ) : null}
+        {/* Live Canvas Preview */}
+        <section className="flex min-h-[580px] items-center justify-center rounded-2xl border border-token bg-canvas p-6 shadow-inner">
+          {current && (
+            <CarouselCanvas
+              slide={current}
+              design={design}
+              index={active}
+              total={slides.length}
+            />
+          )}
         </section>
 
-        <aside className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black/30 p-2 font-semibold" />
-          {current ? (
-            <>
-              <label className="block text-xs text-slate-400">Label<input value={current.subtext} onChange={(e) => patchSlide(active, { subtext: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-white" /></label>
-              <label className="block text-xs text-slate-400">Headline<textarea value={current.headline} onChange={(e) => patchSlide(active, { headline: e.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-white" /></label>
-              <label className="block text-xs text-slate-400">Body<textarea value={current.body} onChange={(e) => patchSlide(active, { body: e.target.value })} rows={4} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-white" /></label>
-              <label className="block text-xs text-slate-400">Background foto<input type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; if (file) patchSlide(active, { imageBase64: await readDataUrl(file) }); }} className="mt-1 block w-full text-xs" /></label>
-              <div className="flex gap-2"><button onClick={() => moveSlide(active, -1)} className="rounded-lg border border-white/10 px-3 py-1">↑</button><button onClick={() => moveSlide(active, 1)} className="rounded-lg border border-white/10 px-3 py-1">↓</button><button onClick={() => removeSlide(active)} className="ml-auto text-xs text-red-300">Hapus slide</button></div>
-            </>
-          ) : null}
-          <div className="grid grid-cols-2 gap-2 border-t border-white/10 pt-4">
-            <label className="text-xs text-slate-400">Rasio<select value={design.aspectRatio} onChange={(e) => setDesign({ ...design, aspectRatio: e.target.value })} className="mt-1 w-full rounded-lg bg-slate-950 p-2 text-white">{["1:1", "4:5", "3:4", "9:16", "16:9"].map((v) => <option key={v}>{v}</option>)}</select></label>
-            <label className="text-xs text-slate-400">Font<select value={design.fontFamily} onChange={(e) => setDesign({ ...design, fontFamily: e.target.value })} className="mt-1 w-full rounded-lg bg-slate-950 p-2 text-white">{["Sans", "Rounded", "Serif", "Monospace"].map((v) => <option key={v}>{v}</option>)}</select></label>
-          </div>
-          <label className="block text-xs text-slate-400">Tema<select value={design.backgroundTheme} onChange={(e) => setDesign({ ...design, backgroundTheme: e.target.value })} className="mt-1 w-full rounded-lg bg-slate-950 p-2 text-white">{Object.keys(THEMES).map((v) => <option key={v}>{v}</option>)}</select></label>
-          <div className="grid grid-cols-2 gap-2"><label className="text-xs text-slate-400">Teks<input type="color" value={design.textColorHex} onChange={(e) => setDesign({ ...design, textColorHex: e.target.value })} className="mt-1 h-9 w-full" /></label><label className="text-xs text-slate-400">Aksen<input type="color" value={design.accentColorHex} onChange={(e) => setDesign({ ...design, accentColorHex: e.target.value })} className="mt-1 h-9 w-full" /></label></div>
-          <label className="block text-xs text-slate-400">Watermark<input value={design.watermarkText} onChange={(e) => setDesign({ ...design, watermarkText: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-white" /></label>
-          <label className="block text-xs text-slate-400">CTA<input value={design.ctaText} onChange={(e) => setDesign({ ...design, ctaText: e.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-white" /></label>
-        </aside>
+        {/* Slide Properties Inspector Component */}
+        <CarouselInspector
+          title={title}
+          setTitle={setTitle}
+          current={current}
+          active={active}
+          patchSlide={patchSlide}
+          moveSlide={moveSlide}
+          removeSlide={removeSlide}
+          design={design}
+          setDesign={setDesign}
+          readDataUrl={readDataUrl}
+        />
       </div>
 
-      {output ? (
-        <section className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/5 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">Hasil render</h2><a href={mediaUrl(output.zipUrl)} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-bold text-black">Download ZIP</a></div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{output.images.map((url, index) => <a key={url} href={mediaUrl(url)} target="_blank"><img src={mediaUrl(url)} alt={`Slide ${index + 1}`} className="rounded-lg border border-white/10" /></a>)}</div>
+      {/* Render Outputs */}
+      {output && (
+        <section className="mt-8 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-5 space-y-4 animate-in fade-in">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-emerald-400">Hasil Render Gambar PNG</h2>
+            <a
+              href={mediaUrl(output.zipUrl)}
+              download
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors"
+            >
+              Download Arsip ZIP
+            </a>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {output.images.map((url, index) => (
+              <a key={url} href={mediaUrl(url)} target="_blank" rel="noreferrer">
+                <img
+                  src={mediaUrl(url)}
+                  alt={`Slide ${index + 1}`}
+                  className="rounded-xl border border-token hover:border-emerald-500 transition-colors shadow-md"
+                />
+              </a>
+            ))}
+          </div>
         </section>
-      ) : null}
+      )}
     </main>
   );
 }
+

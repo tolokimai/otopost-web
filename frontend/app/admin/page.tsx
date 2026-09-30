@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import Header from "@/components/Header";
 import MenuManager from "@/components/admin/MenuManager";
@@ -17,61 +17,158 @@ import {
   type StudioMenu,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
+import { StateRenderer, PageState } from "@/components/ui/StateRenderer";
 
 type Tab = "overview" | "plans" | "settings" | "users" | "menus";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Ringkasan" },
-  { id: "plans", label: "Paket" },
-  { id: "settings", label: "Settings" },
-  { id: "users", label: "User" },
-  { id: "menus", label: "Menu Studio" },
-];
 
-function rupiah(value: number) { return "Rp" + Number(value || 0).toLocaleString("id-ID"); }
+function rupiah(value: number) {
+  return "Rp" + Number(value || 0).toLocaleString("id-ID");
+}
 
 export default function AdminPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
+
   const [tab, setTab] = useState<Tab>("overview");
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [plans, setPlans] = useState<AdminPlan[]>([]);
   const [settings, setSettings] = useState<AdminSetting[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [menus, setMenus] = useState<StudioMenu[]>([]);
-  const [busy, setBusy] = useState(true);
-  const [error, setError] = useState("");
+  const [pageState, setPageState] = useState<PageState>("LOADING");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "overview", label: t("admin.tab_overview") },
+    { id: "plans", label: t("admin.tab_plans") },
+    { id: "settings", label: t("admin.tab_settings") },
+    { id: "users", label: t("admin.tab_users") },
+    { id: "menus", label: t("admin.tab_menus") },
+  ];
 
   useEffect(() => {
-    if (!loading && (!user || !user.isAdmin)) router.replace(user ? "/studio" : "/login?next=/admin");
-  }, [loading, user, router]);
+    if (!authLoading && (!user || !user.isAdmin)) {
+      if (!user) {
+        router.replace("/login?next=/admin");
+      } else {
+        setPageState("FORBIDDEN");
+      }
+    }
+  }, [authLoading, user, router]);
 
-  useEffect(() => {
+  async function loadData() {
     if (!user?.isAdmin) return;
-    setBusy(true);
-    Promise.all([
-      api.adminOverview(), api.adminPlans(), api.adminSettings(), api.adminUsers(), api.adminMenus(),
-    ]).then(([o, p, s, u, m]) => {
-      setOverview(o); setPlans(p.plans); setSettings(s.settings); setUsers(u.users); setMenus(m.menus);
-    }).catch((err) => setError(err instanceof Error ? err.message : String(err))).finally(() => setBusy(false));
+    setPageState("LOADING");
+    setErrorMessage("");
+    try {
+      const [o, p, s, u, m] = await Promise.all([
+        api.adminOverview(),
+        api.adminPlans(),
+        api.adminSettings(),
+        api.adminUsers(),
+        api.adminMenus(),
+      ]);
+      setOverview(o);
+      setPlans(p.plans);
+      setSettings(s.settings);
+      setUsers(u.users);
+      setMenus(m.menus);
+      setPageState("SUCCESS");
+    } catch (err: any) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setPageState("ERROR");
+    }
+  }
+
+  useEffect(() => {
+    if (user?.isAdmin) {
+      void loadData();
+    }
   }, [user]);
 
-  if (loading || !user?.isAdmin) return <main className="mx-auto max-w-6xl px-4"><Header /><p className="py-10 text-center text-sm text-slate-400">Memeriksa akses admin…</p></main>;
+  if (authLoading || (!user?.isAdmin && pageState !== "FORBIDDEN")) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <Header />
+        <StateRenderer state="LOADING">
+          <div />
+        </StateRenderer>
+      </main>
+    );
+  }
 
-  const cards = overview ? [
-    ["Total user", overview.users], ["User aktif", overview.activeUsers], ["User berbayar", overview.paidUsers],
-    ["Order lunas", overview.paidOrders], ["Pendapatan tercatat", rupiah(overview.revenue)], ["Menu aktif", overview.menusEnabled],
-  ] : [];
+  const cards = overview
+    ? [
+        ["Total User", overview.users],
+        ["User Aktif", overview.activeUsers],
+        ["User Berbayar", overview.paidUsers],
+        ["Order Lunas", overview.paidOrders],
+        ["Total Pendapatan", rupiah(overview.revenue)],
+        ["Menu Studio Aktif", overview.menusEnabled],
+      ]
+    : [];
 
-  return <main className="mx-auto max-w-7xl px-4 pb-24">
-    <Header />
-    <div className="mb-6"><div className="text-xs font-semibold text-amber-300">OWNER CONTROL CENTER</div><h1 className="mt-1 text-3xl font-extrabold">Admin OtoPost</h1><p className="mt-2 text-sm text-slate-400">Paket, billing, user, secret, dan menu Studio tersimpan di database—perubahan tidak perlu rebuild frontend.</p></div>
-    <nav className="mb-6 flex gap-2 overflow-x-auto border-b border-white/10 pb-3">{TABS.map((item) => <button key={item.id} onClick={() => setTab(item.id)} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm ${tab === item.id ? "bg-brand font-semibold" : "bg-white/5 text-slate-400"}`}>{item.label}</button>)}</nav>
-    {busy ? <div className="rounded-xl border border-brand/30 bg-brand/10 p-4 text-sm">⏳ Memuat konfigurasi admin…</div> : null}
-    {error ? <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</div> : null}
-    {!busy && tab === "overview" ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cards.map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"><div className="text-xs text-slate-500">{label}</div><div className="mt-2 text-2xl font-extrabold">{value}</div></div>)}</div> : null}
-    {!busy && tab === "plans" ? <PlanManager plans={plans} setPlans={setPlans} /> : null}
-    {!busy && tab === "settings" ? <SettingManager settings={settings} setSettings={setSettings} /> : null}
-    {!busy && tab === "users" ? <UserManager users={users} setUsers={setUsers} plans={plans} /> : null}
-    {!busy && tab === "menus" ? <MenuManager menus={menus} setMenus={setMenus} plans={plans} /> : null}
-  </main>;
+  return (
+    <main className="mx-auto max-w-7xl px-4 pb-24">
+      <Header />
+
+      <div className="mb-6 space-y-1">
+        <div className="text-xs font-bold tracking-wider text-amber-400 uppercase">
+          Owner Control Center
+        </div>
+        <h1 className="text-3xl font-extrabold text-token">
+          {t("admin.title")}
+        </h1>
+        <p className="text-xs text-token-muted max-w-2xl">
+          Pengaturan paket, kuota, secret API, pengguna, dan navigasi Studio disimpan dalam database secara terpusat.
+        </p>
+      </div>
+
+      {/* Tab Navigation */}
+      <nav className="mb-6 flex gap-2 overflow-x-auto border-b border-token pb-3">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            className={`whitespace-nowrap rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+              tab === item.id
+                ? "btn-primary shadow-md"
+                : "bg-surface hover:bg-surface-hover text-token-muted"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Main Content Rendered by State */}
+      <StateRenderer
+        state={pageState}
+        errorMessage={errorMessage}
+        onRetry={() => void loadData()}
+      >
+        {tab === "overview" && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-200">
+            {cards.map(([label, value]) => (
+              <div
+                key={String(label)}
+                className="rounded-2xl border border-token bg-surface p-5 space-y-1"
+              >
+                <div className="text-xs font-medium text-token-muted">{label}</div>
+                <div className="text-2xl font-extrabold text-token">{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "plans" && <PlanManager plans={plans} setPlans={setPlans} />}
+        {tab === "settings" && <SettingManager settings={settings} setSettings={setSettings} />}
+        {tab === "users" && <UserManager users={users} setUsers={setUsers} plans={plans} />}
+        {tab === "menus" && <MenuManager menus={menus} setMenus={setMenus} plans={plans} />}
+      </StateRenderer>
+    </main>
+  );
 }
+

@@ -1,5 +1,6 @@
-# API Reference
+# API Specification & Contract
 
+<<<<<<< Updated upstream
 Base URL local: `http://localhost:5000`. JSON endpoints use `Authorization: Bearer <JWT>` where required.
 
 ## Public/auth
@@ -75,25 +76,53 @@ Slide: `{headline,body,subtext,imageBase64?}`. Rasio: `1:1`, `4:5`, `3:4`, `9:16
 - `GET /remake/jobs/{job}`
 
 Contoh job:
+=======
+## Standard Response Format
+All responses must strictly adhere to the following JSON schemas:
+>>>>>>> Stashed changes
 
+### Success Response
 ```json
 {
-  "mediaId": "...",
-  "audioId": "...",
-  "mode": "lipsync",
-  "aspectRatio": "9:16",
-  "subtitleText": "Teks opsional",
-  "subtitleStyle": "bold",
-  "consentConfirmed": true
+  "success": true,
+  "data": { ... },
+  "message": "Operasi berhasil"
 }
 ```
 
-`mode=lipsync` membutuhkan worker MuseTalk 1.5 yang sehat dan consent. Tidak ada fallback ke model lain. `mode=overlay` menggunakan FFmpeg lokal.
+### Error Response
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Input data tidak valid"
+  }
+}
+```
 
-## MuseTalk worker
-- `GET /health`
-- `POST /v1/jobs` — multipart `face` + `audio`
-- `GET /v1/jobs/{job}`
-- `GET /files/{job}/result.mp4`
+## Standard Error Code Catalog
+- `AUTH_REQUIRED`: 401 Unauthorized (missing or invalid token)
+- `FORBIDDEN`: 403 Forbidden (insufficient permissions, plan tier, or deactivated account)
+- `NOT_FOUND`: 404 Not Found (resource does not exist)
+- `VALIDATION_ERROR`: 422 Unprocessable Entity (malformed body, invalid parameters)
+- `CONFLICT`: 409 Conflict (e.g. duplicate email, unique constraint violation)
+- `RATE_LIMITED`: 429 Too Many Requests (rate limit exceeded)
+- `INTERNAL_ERROR`: 500 Internal Server Error (unhandled system failure, internal stack hidden)
 
-Bearer token diperlukan jika `WORKER_TOKEN` diset.
+## Standard Pagination Contract
+Query format: `GET /endpoint?page=1&limit=25&sort=created_at&order=desc&search=keyword`
+Response format:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [ ... ],
+    "total": 128,
+    "page": 1,
+    "limit": 25,
+    "totalPages": 6
+  }
+}
+```
+

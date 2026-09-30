@@ -1,76 +1,269 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { api, type AdminPlan } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
+import { Toast } from "@/components/ui/Toast";
+import { Confirm } from "@/components/ui/Confirm";
+import DataTable, { ColumnDef } from "@/components/ui/DataTable";
 
-export default function PlanManager({ plans, setPlans }: { plans: AdminPlan[]; setPlans: (rows: AdminPlan[]) => void }) {
+export default function PlanManager({
+  plans,
+  setPlans,
+}: {
+  plans: AdminPlan[];
+  setPlans: (rows: AdminPlan[]) => void;
+}) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState({ id: "", name: "", price: 0, credits: 0, durationDays: 30 });
-  const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   function patch(id: string, values: Partial<AdminPlan>) {
     setPlans(plans.map((row) => (row.id === id ? { ...row, ...values } : row)));
   }
 
   async function save(row: AdminPlan) {
-    setBusy(row.id); setError("");
+    setBusyId(row.id);
     try {
       const updated = await api.adminUpdatePlan(row.id, {
-        name: row.name, price: Number(row.price), credits: Number(row.credits),
-        durationDays: Number(row.durationDays || 30), features: row.features,
-        purchasable: row.purchasable, highlight: row.highlight,
-        isActive: row.isActive, sortOrder: Number(row.sortOrder),
+        name: row.name,
+        price: Number(row.price),
+        credits: Number(row.credits),
+        durationDays: Number(row.durationDays || 30),
+        features: row.features,
+        purchasable: row.purchasable,
+        highlight: row.highlight,
+        isActive: row.isActive,
+        sortOrder: Number(row.sortOrder),
       });
       setPlans(plans.map((item) => (item.id === row.id ? updated : item)));
-    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
-    finally { setBusy(""); }
+      Toast.success(t("common.save") + " paket berhasil");
+    } catch (err: any) {
+      Toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function create() {
-    if (!draft.id || !draft.name) return;
-    setBusy("new"); setError("");
+    if (!draft.id.trim() || !draft.name.trim()) {
+      Toast.error("ID dan Nama paket wajib diisi");
+      return;
+    }
+    setBusyId("new");
     try {
-      const created = await api.adminCreatePlan({ ...draft, features: [], purchasable: true, highlight: false, isActive: true, sortOrder: plans.length * 10 + 10 });
+      const created = await api.adminCreatePlan({
+        ...draft,
+        features: [],
+        purchasable: true,
+        highlight: false,
+        isActive: true,
+        sortOrder: plans.length * 10 + 10,
+      });
       setPlans([...plans, created]);
       setDraft({ id: "", name: "", price: 0, credits: 0, durationDays: 30 });
-    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
-    finally { setBusy(""); }
+      Toast.success(t("common.create") + " paket berhasil");
+    } catch (err: any) {
+      Toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusyId(null);
+    }
   }
 
-  async function remove(id: string) {
-    if (!window.confirm(`Hapus paket ${id}?`)) return;
-    setBusy(id); setError("");
-    try { await api.adminDeletePlan(id); setPlans(plans.filter((item) => item.id !== id)); }
-    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
-    finally { setBusy(""); }
+  function remove(id: string) {
+    Confirm.delete(`Hapus paket "${id}"? Tindakan ini tidak dapat dibatalkan.`, async () => {
+      setBusyId(id);
+      try {
+        await api.adminDeletePlan(id);
+        setPlans(plans.filter((item) => item.id !== id));
+        Toast.success(t("common.delete") + " paket berhasil");
+      } catch (err: any) {
+        Toast.error(err instanceof Error ? err.message : String(err));
+      } finally {
+        setBusyId(null);
+      }
+    });
   }
 
-  return <div className="space-y-4">
-    {error ? <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</div> : null}
-    <div className="overflow-x-auto rounded-2xl border border-white/10">
-      <table className="min-w-[1050px] w-full text-left text-xs">
-        <thead className="bg-white/5 text-slate-400"><tr>{["ID/Nama", "Harga", "Kredit", "Hari", "Fitur (satu/baris)", "Beli", "Sorot", "Aktif", "Urutan", "Aksi"].map((h) => <th key={h} className="p-3">{h}</th>)}</tr></thead>
-        <tbody>{plans.map((row) => <tr key={row.id} className="border-t border-white/5 align-top">
-          <td className="p-2"><div className="mb-1 text-[10px] text-slate-500">{row.id}</div><input value={row.name} onChange={(e) => patch(row.id, { name: e.target.value })} className="w-28 rounded bg-black/30 p-2" /></td>
-          <td className="p-2"><input type="number" value={row.price} onChange={(e) => patch(row.id, { price: Number(e.target.value) })} className="w-24 rounded bg-black/30 p-2" /></td>
-          <td className="p-2"><input type="number" value={row.credits} onChange={(e) => patch(row.id, { credits: Number(e.target.value) })} className="w-20 rounded bg-black/30 p-2" /></td>
-          <td className="p-2"><input type="number" value={row.durationDays || 30} onChange={(e) => patch(row.id, { durationDays: Number(e.target.value) })} className="w-16 rounded bg-black/30 p-2" /></td>
-          <td className="p-2"><textarea value={row.features.join("\n")} onChange={(e) => patch(row.id, { features: e.target.value.split("\n").filter(Boolean) })} rows={4} className="w-52 rounded bg-black/30 p-2" /></td>
-          <td className="p-3"><input type="checkbox" checked={row.purchasable} onChange={(e) => patch(row.id, { purchasable: e.target.checked })} /></td>
-          <td className="p-3"><input type="checkbox" checked={row.highlight} onChange={(e) => patch(row.id, { highlight: e.target.checked })} /></td>
-          <td className="p-3"><input type="checkbox" checked={row.isActive} onChange={(e) => patch(row.id, { isActive: e.target.checked })} /></td>
-          <td className="p-2"><input type="number" value={row.sortOrder} onChange={(e) => patch(row.id, { sortOrder: Number(e.target.value) })} className="w-16 rounded bg-black/30 p-2" /></td>
-          <td className="space-y-2 p-2"><button onClick={() => void save(row)} disabled={busy === row.id} className="block rounded bg-brand px-3 py-2 font-semibold">Simpan</button><button onClick={() => void remove(row.id)} className="text-red-300">Hapus</button></td>
-        </tr>)}</tbody>
-      </table>
+  const columns: ColumnDef<AdminPlan>[] = [
+    {
+      header: t("admin.plans_col_id"),
+      accessorKey: "id",
+      sortable: true,
+      cell: (row) => (
+        <div>
+          <div className="text-[10px] text-token-muted font-mono">{row.id}</div>
+          <input
+            type="text"
+            value={row.name}
+            onChange={(e) => patch(row.id, { name: e.target.value })}
+            className="w-28 rounded-lg border border-token bg-black/20 px-2 py-1 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+      ),
+    },
+    {
+      header: t("admin.plans_col_price"),
+      accessorKey: "price",
+      sortable: true,
+      cell: (row) => (
+        <input
+          type="number"
+          value={row.price}
+          onChange={(e) => patch(row.id, { price: Number(e.target.value) })}
+          className="w-24 rounded-lg border border-token bg-black/20 px-2 py-1 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_credits"),
+      accessorKey: "credits",
+      sortable: true,
+      cell: (row) => (
+        <input
+          type="number"
+          value={row.credits}
+          onChange={(e) => patch(row.id, { credits: Number(e.target.value) })}
+          className="w-20 rounded-lg border border-token bg-black/20 px-2 py-1 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_days"),
+      accessorKey: "durationDays",
+      sortable: true,
+      cell: (row) => (
+        <input
+          type="number"
+          value={row.durationDays || 30}
+          onChange={(e) => patch(row.id, { durationDays: Number(e.target.value) })}
+          className="w-16 rounded-lg border border-token bg-black/20 px-2 py-1 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_features"),
+      cell: (row) => (
+        <textarea
+          value={row.features.join("\n")}
+          onChange={(e) => patch(row.id, { features: e.target.value.split("\n").filter(Boolean) })}
+          rows={3}
+          className="w-48 rounded-lg border border-token bg-black/20 p-1.5 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_purchasable"),
+      cell: (row) => (
+        <input
+          type="checkbox"
+          checked={row.purchasable}
+          onChange={(e) => patch(row.id, { purchasable: e.target.checked })}
+          className="h-4 w-4 rounded accent-indigo-500 cursor-pointer"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_highlight"),
+      cell: (row) => (
+        <input
+          type="checkbox"
+          checked={row.highlight}
+          onChange={(e) => patch(row.id, { highlight: e.target.checked })}
+          className="h-4 w-4 rounded accent-amber-500 cursor-pointer"
+        />
+      ),
+    },
+    {
+      header: t("admin.plans_col_active"),
+      cell: (row) => (
+        <input
+          type="checkbox"
+          checked={row.isActive}
+          onChange={(e) => patch(row.id, { isActive: e.target.checked })}
+          className="h-4 w-4 rounded accent-emerald-500 cursor-pointer"
+        />
+      ),
+    },
+    {
+      header: t("common.actions"),
+      cell: (row) => (
+        <div className="flex flex-col gap-1.5">
+          <button
+            onClick={() => void save(row)}
+            disabled={busyId === row.id}
+            className="rounded-lg btn-primary px-3 py-1 font-semibold text-xs"
+          >
+            {busyId === row.id ? t("common.saving") : t("common.save")}
+          </button>
+          <button
+            onClick={() => remove(row.id)}
+            disabled={busyId === row.id}
+            className="text-xs text-red-400 hover:text-red-300 transition-colors text-left"
+          >
+            {t("common.delete")}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <DataTable
+        data={plans}
+        columns={columns}
+        keyExtractor={(item) => item.id}
+        searchPlaceholder="Cari paket..."
+      />
+
+      {/* Add New Plan Form */}
+      <div className="rounded-2xl border border-token bg-surface p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-token">{t("admin.plans_add_new")}</h4>
+        <div className="grid gap-2 sm:grid-cols-6">
+          <input
+            placeholder="id-paket"
+            value={draft.id}
+            onChange={(e) => setDraft({ ...draft, id: e.target.value })}
+            className="rounded-xl border border-token bg-black/20 p-2 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <input
+            placeholder="Nama Paket"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            className="rounded-xl border border-token bg-black/20 p-2 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <input
+            type="number"
+            placeholder="Harga (IDR)"
+            value={draft.price}
+            onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })}
+            className="rounded-xl border border-token bg-black/20 p-2 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <input
+            type="number"
+            placeholder="Kredit"
+            value={draft.credits}
+            onChange={(e) => setDraft({ ...draft, credits: Number(e.target.value) })}
+            className="rounded-xl border border-token bg-black/20 p-2 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <input
+            type="number"
+            placeholder="Durasi Hari"
+            value={draft.durationDays}
+            onChange={(e) => setDraft({ ...draft, durationDays: Number(e.target.value) })}
+            className="rounded-xl border border-token bg-black/20 p-2 text-xs text-token focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <button
+            onClick={() => void create()}
+            disabled={busyId === "new"}
+            className="rounded-xl btn-primary px-3 py-2 text-xs font-semibold"
+          >
+            {busyId === "new" ? t("common.saving") : `+ ${t("admin.tab_plans")}`}
+          </button>
+        </div>
+      </div>
     </div>
-    <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:grid-cols-6">
-      <input placeholder="id-paket" value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} className="rounded bg-black/30 p-2 text-sm" />
-      <input placeholder="Nama" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="rounded bg-black/30 p-2 text-sm" />
-      <input type="number" placeholder="Harga" value={draft.price} onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })} className="rounded bg-black/30 p-2 text-sm" />
-      <input type="number" placeholder="Kredit" value={draft.credits} onChange={(e) => setDraft({ ...draft, credits: Number(e.target.value) })} className="rounded bg-black/30 p-2 text-sm" />
-      <input type="number" placeholder="Hari" value={draft.durationDays} onChange={(e) => setDraft({ ...draft, durationDays: Number(e.target.value) })} className="rounded bg-black/30 p-2 text-sm" />
-      <button onClick={() => void create()} disabled={busy === "new"} className="rounded bg-brand px-3 py-2 text-sm font-semibold">+ Paket</button>
-    </div>
-  </div>;
+  );
 }
+

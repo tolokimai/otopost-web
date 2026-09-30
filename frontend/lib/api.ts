@@ -1,322 +1,282 @@
-export type TranscriptSegment = { startSec: number; text: string };
+import type {
+  AdminOverview,
+  AdminPlan,
+  AdminSetting,
+  AdminUser,
+  CarouselPayload,
+  CarouselProject,
+  CarouselRender,
+  CarouselSlide,
+  CheckoutResponse,
+  ClipResult,
+  ConnectionTestResult,
+  ContentFormat,
+  ContentPlanItem,
+  CredentialsStatus,
+  DashboardStats,
+  HooksResponse,
+  IntegrationStatus,
+  MediaAsset,
+  Order,
+  OrdersResponse,
+  Persona,
+  Plan,
+  PostingLog,
+  RemakeJob,
+  SchedulePreferences,
+  StudioMenu,
+  ThemeIdea,
+  TimelineItem,
+  TokenResponse,
+  TranscriptResponse,
+  TranscriptSegment,
+  ViralSegment,
+  UserOut,
+} from "./types";
 
-export type TranscriptResponse = {
-  videoId?: string | null;
-  title?: string | null;
-  channelName?: string | null;
-  durationSec?: number | null;
-  hasTranscript: boolean;
-  transcriptText: string;
-  segments: TranscriptSegment[];
-};
+export * from "./types";
 
-export type ViralSegment = {
-  startSec: number;
-  endSec: number;
-  durationFormatted: string;
-  title: string;
-  hook: string;
-  reasonWhyViral: string;
-  transcriptSnippet: string;
-};
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000"
+).replace(/\/+$/, "");
 
-export type ClipResult = {
-  index: number;
-  title: string;
-  startSec: number;
-  endSec: number;
-  reframed: boolean;
-  subtitled: boolean;
-  downloadUrl: string;
-};
-
-export type HooksResponse = {
-  viralHook: string;
-  caption: string;
-  hashtags: string;
-  subtitles: string[];
-};
-
-export type UserOut = {
-  id: string;
-  email: string;
-  name: string;
-  plan: string;
-  credits: number;
-  planExpiresAt?: string | null;
-  isAdmin: boolean;
-};
-
-export type TokenResponse = {
-  accessToken: string;
-  tokenType: string;
-  user: UserOut;
-};
-
-export type ProviderStatus = { provider: string; configured: boolean };
-export type CredentialsStatus = { providers: ProviderStatus[] };
-
-export type Plan = {
-  id: string;
-  name: string;
-  price: number;
-  credits: number;
-  durationDays?: number;
-  features: string[];
-  purchasable: boolean;
-  highlight: boolean;
-};
-
-export type PlansResponse = { plans: Plan[]; currency: string; provider: string };
-
-export type CheckoutResponse = {
-  orderId: string;
-  redirectUrl: string;
-  provider: string;
-  simulate: boolean;
-  token: string;
-};
-
-export type Order = {
-  orderId: string;
-  plan: string;
-  amount: number;
-  currency: string;
-  status: string;
-  creditsGranted: number;
-  createdAt?: string | null;
-  paidAt?: string | null;
-};
-
-export type OrdersResponse = { orders: Order[] };
-
-export type StudioMenu = {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  href: string;
-  isEnabled: boolean;
-  isReady: boolean;
-  requiredPlan: string;
-  sortOrder: number;
-};
-
-export type CarouselSlide = {
-  headline: string;
-  body: string;
-  subtext: string;
-  imageBase64?: string | null;
-};
-
-export type CarouselDesign = {
-  aspectRatio: string;
-  backgroundTheme: string;
-  typographyStyle: string;
-  fontFamily: string;
-  textColorHex: string;
-  accentColorHex: string;
-  baseFontScale: number;
-  textEffect: string;
-  ctaText: string;
-  watermarkText: string;
-  showPageNumber: boolean;
-  showSwipe: boolean;
-  logoBase64?: string | null;
-};
-
-export type CarouselPayload = { title: string; slides: CarouselSlide[]; design: CarouselDesign };
-export type CarouselRender = { job: string; images: string[]; zipUrl: string };
-export type CarouselProject = {
-  id: string;
-  title: string;
-  status: string;
-  payload: CarouselPayload;
-  output: CarouselRender | Record<string, never>;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-};
-
-export type MediaAsset = {
-  id: string;
-  kind: "video" | "photo" | "audio";
-  name: string;
-  contentType: string;
-  sizeBytes: number;
-  url: string;
-  createdAt?: string | null;
-};
-
-export type RemakeJob = {
-  job: string;
-  status: string;
-  mode: string;
-  progress: number;
-  downloadUrl: string;
-  error: string;
-  lipsyncApplied: boolean;
-};
-
-export type AdminPlan = Plan & { isActive: boolean; sortOrder: number };
-export type AdminSetting = {
-  key: string;
-  value: string;
-  valueType: string;
-  category: string;
-  label: string;
-  description: string;
-  isSecret: boolean;
-  hasValue: boolean;
-};
-export type AdminUser = {
-  id: string;
-  email: string;
-  name: string;
-  plan: string;
-  credits: number;
-  planExpiresAt?: string | null;
-  isActive: boolean;
-  isAdmin: boolean;
-  createdAt?: string | null;
-};
-export type AdminOverview = {
-  users: number;
-  activeUsers: number;
-  paidUsers: number;
-  orders: number;
-  paidOrders: number;
-  revenue: number;
-  plans: number;
-  menusEnabled: number;
-};
-
-const BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
-const TOKEN_KEY = "otopost_token";
-
-let authToken: string | null = null;
-
-export function setAuthToken(token: string | null): void {
-  authToken = token;
+export function mediaUrl(pathOrUrl?: string | null): string {
+  if (!pathOrUrl) return "";
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    return pathOrUrl;
+  }
+  const clean = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${API_BASE}${clean}`;
 }
 
-export function getToken(): string | null {
-  if (authToken) return authToken;
-  if (typeof window !== "undefined") return window.localStorage.getItem(TOKEN_KEY);
-  return null;
-}
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  details?: unknown;
 
-function apiUrl(path: string): string {
-  return `${BASE}${path}`;
-}
-
-export function mediaUrl(u: string): string {
-  if (!u) return "";
-  if (/^https?:\/\//.test(u)) return u;
-  return apiUrl(u);
-}
-
-function authHeaders(): Record<string, string> {
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
-async function parseError(res: Response): Promise<string> {
-  try {
-    const data = (await res.json()) as { detail?: string };
-    return data.detail || "";
-  } catch {
-    return "";
+  constructor(message: string, code = "API_ERROR", status = 400, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
   }
 }
 
-async function postJSON<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(body),
+export function setAuthToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  if (token) {
+    localStorage.setItem("otopost_token", token);
+  } else {
+    localStorage.removeItem("otopost_token");
+  }
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("otopost_token");
+}
+
+function authHeader(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...authHeader(),
+      ...(options.headers || {}),
+    },
   });
+
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const data = isJson ? await res.json().catch(() => null) : null;
+
   if (!res.ok) {
-    const detail = await parseError(res);
-    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
+    const errorObj = data?.error;
+    const msg = errorObj?.message || data?.detail || `HTTP ${res.status}`;
+    const code = errorObj?.code || `HTTP_${res.status}`;
+    throw new ApiError(msg, code, res.status, errorObj?.details);
   }
-  return (await res.json()) as T;
+
+  if (data && typeof data === "object" && "success" in data && "data" in data) {
+    return data.data as T;
+  }
+  return data as T;
 }
 
-async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path), { headers: { ...authHeaders() } });
-  if (!res.ok) {
-    const detail = await parseError(res);
-    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
-  }
-  return (await res.json()) as T;
-}
-
-async function putJSON<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+const getJSON = <T>(path: string) => request<T>(path, { method: "GET" });
+const postJSON = <T>(path: string, body?: unknown) =>
+  request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+const putJSON = <T>(path: string, body?: unknown) =>
+  request<T>(path, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) {
-    const detail = await parseError(res);
-    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
-  }
-  return (await res.json()) as T;
-}
+const patchJSON = <T>(path: string, body?: unknown) =>
+  request<T>(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+const deleteJSON = <T>(path: string) => request<T>(path, { method: "DELETE" });
 
-async function deleteJSON(path: string): Promise<void> {
-  const res = await fetch(apiUrl(path), { method: "DELETE", headers: { ...authHeaders() } });
-  if (!res.ok) {
-    const detail = await parseError(res);
-    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
-  }
-}
-
-async function uploadForm<T>(path: string, body: FormData): Promise<T> {
-  const res = await fetch(apiUrl(path), {
+const uploadForm = <T>(path: string, body: FormData) =>
+  request<T>(path, {
     method: "POST",
-    headers: { ...authHeaders() },
     body,
   });
-  if (!res.ok) {
-    const detail = await parseError(res);
-    throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
-  }
-  return (await res.json()) as T;
-}
 
 export const api = {
-  transcript: (body: { url: string; langs?: string[] }) =>
-    postJSON<TranscriptResponse>("/transcript", body),
-  analyze: (body: {
-    topic?: string;
-    segments?: TranscriptSegment[];
-    transcript?: string;
-    maxSegments?: number;
-  }) => postJSON<{ segments: ViralSegment[] }>("/ai/analyze-transcript", body),
-  clipsAsync: (body: unknown) => postJSON<{ job: string; status: string }>("/clips-async", body),
-  clipsSync: (body: unknown) => postJSON<{ job: string; clips: ClipResult[] }>("/clips", body),
-  clipsStatus: (job: string) =>
-    getJSON<{ job: string; status: string; clips: ClipResult[]; error?: string }>(
-      `/clips/status/${job}`,
-    ),
-  hooks: (body: { topic: string; style?: string }) =>
-    postJSON<HooksResponse>("/ai/hooks-captions", body),
-  register: (body: { email: string; password: string; name?: string }) =>
-    postJSON<TokenResponse>("/auth/register", body),
-  login: (body: { email: string; password: string }) =>
-    postJSON<TokenResponse>("/auth/login", body),
+  // Auth
+  register: (
+    reqOrEmail: { email: string; password: string; name?: string } | string,
+    password?: string,
+    name?: string
+  ) => {
+    const body =
+      typeof reqOrEmail === "object"
+        ? reqOrEmail
+        : { email: reqOrEmail, password: password || "", name };
+    return postJSON<TokenResponse>("/auth/register", body);
+  },
+  login: (
+    reqOrEmail: { email: string; password: string } | string,
+    password?: string
+  ) => {
+    const body =
+      typeof reqOrEmail === "object"
+        ? reqOrEmail
+        : { email: reqOrEmail, password: password || "" };
+    return postJSON<TokenResponse>("/auth/login", body);
+  },
   me: () => getJSON<UserOut>("/auth/me"),
   getCredentials: () => getJSON<CredentialsStatus>("/auth/credentials"),
   putCredential: (body: { provider: string; value: string }) =>
-    putJSON<ProviderStatus>("/auth/credentials", body),
-  getPlans: () => getJSON<PlansResponse>("/billing/plans"),
-  checkout: (body: { plan: string }) => postJSON<CheckoutResponse>("/billing/checkout", body),
-  simulatePay: (orderId: string) => postJSON<Order>(`/billing/simulate/${orderId}/pay`, {}),
+    putJSON<{ provider: string; configured: boolean }>("/auth/credentials", body),
+
+  // Billing & Plans
+  getPlans: () => getJSON<{ plans: Plan[]; provider?: string }>("/billing/plans"),
+  checkout: (body: { plan: string; provider?: string }) =>
+    postJSON<CheckoutResponse>("/billing/checkout", body),
+  simulatePay: (orderId: string) => postJSON<Order>(`/billing/orders/${orderId}/simulate`),
   getOrders: () => getJSON<OrdersResponse>("/billing/orders"),
   getOrder: (orderId: string) => getJSON<Order>(`/billing/orders/${orderId}`),
   getStudioMenus: () => getJSON<{ menus: StudioMenu[] }>("/config/studio-menus"),
 
+  // Dashboard & Auto-Pilot Scheduler
+  getDashboardStats: () => getJSON<DashboardStats>("/api/dashboard/stats"),
+  getTimeline: (days = 7, platform?: string, statusFilter?: string) => {
+    let url = `/api/dashboard/timeline?days=${days}`;
+    if (platform) url += `&platform=${encodeURIComponent(platform)}`;
+    if (statusFilter) url += `&status_filter=${encodeURIComponent(statusFilter)}`;
+    return getJSON<{ timeline: TimelineItem[] }>(url);
+  },
+  createScheduledPost: (body: {
+    title: string;
+    format: string;
+    media_url: string;
+    caption: string;
+    hashtags: string;
+    platforms: string[];
+    scheduled_at: string;
+    content_plan_id?: string;
+  }) => postJSON<{ ok: boolean; id: string }>("/api/dashboard/posts", body),
+  postNow: (postId: string) =>
+    postJSON<{ ok: boolean; status: string; postedAt: string }>(
+      `/api/dashboard/posts/${postId}/post-now`
+    ),
+  updatePost: (postId: string, body: Partial<TimelineItem>) =>
+    patchJSON<{ ok: boolean }>(`/api/dashboard/posts/${postId}`, body),
+  deletePost: (postId: string) => deleteJSON<{ ok: boolean }>(`/api/dashboard/posts/${postId}`),
+  retryPost: (postId: string) =>
+    postJSON<{ ok: boolean; status: string }>(`/api/dashboard/posts/${postId}/retry`),
+  getPostingLogs: (limit = 50) =>
+    getJSON<{ logs: PostingLog[] }>(`/api/dashboard/logs?limit=${limit}`),
+
+  // Persona Studio
+  getPersonas: () => getJSON<{ personas: Persona[] }>("/api/personas"),
+  createPersona: (body: Partial<Persona>) =>
+    postJSON<{ ok: boolean; id: string }>("/api/personas", body),
+  updatePersona: (id: string, body: Partial<Persona>) =>
+    putJSON<{ ok: boolean }>(`/api/personas/${id}`, body),
+  deletePersona: (id: string) => deleteJSON<{ ok: boolean }>(`/api/personas/${id}`),
+  setDefaultPersona: (id: string) =>
+    postJSON<{ ok: boolean }>(`/api/personas/${id}/set-default`),
+  generatePersona: (body: { niche: string; name: string; target_audience?: string }) =>
+    postJSON<{ ok: boolean; persona: Persona; notice?: string }>("/api/personas/generate", body),
+
+  // Content Plan & Roadmap
+  getContentPlans: (personaId?: string, statusFilter?: string) => {
+    let url = "/api/content-plans";
+    const params: string[] = [];
+    if (personaId) params.push(`persona_id=${encodeURIComponent(personaId)}`);
+    if (statusFilter) params.push(`status_filter=${encodeURIComponent(statusFilter)}`);
+    if (params.length) url += `?${params.join("&")}`;
+    return getJSON<{ plans: ContentPlanItem[] }>(url);
+  },
+  createContentPlan: (body: Partial<ContentPlanItem>) =>
+    postJSON<{ ok: boolean; id: string }>("/api/content-plans", body),
+  updateContentPlan: (id: string, body: Partial<ContentPlanItem>) =>
+    putJSON<{ ok: boolean }>(`/api/content-plans/${id}`, body),
+  deleteContentPlan: (id: string) =>
+    deleteJSON<{ ok: boolean }>(`/api/content-plans/${id}`),
+  generateThemes: (personaId: string) =>
+    postJSON<{ ok: boolean; themes: ThemeIdea[] }>("/api/content-plans/generate-themes", {
+      persona_id: personaId,
+    }),
+  generateRoadmap: (body: {
+    persona_id: string;
+    theme: string;
+    duration_days: number;
+    formats?: ContentFormat[];
+    save_to_db?: boolean;
+  }) =>
+    postJSON<{ ok: boolean; count: number; roadmap: ContentPlanItem[] }>(
+      "/api/content-plans/generate-roadmap",
+      body
+    ),
+  sendToStudio: (planId: string) =>
+    postJSON<{
+      ok: boolean;
+      targetUrl: string;
+      payload: ContentPlanItem;
+    }>(`/api/content-plans/${planId}/send-to-studio`),
+
+  // Settings & Integrations
+  getIntegrations: () =>
+    getJSON<{
+      integrations: IntegrationStatus[];
+      preferences: SchedulePreferences;
+    }>("/api/settings/integrations"),
+  saveIntegration: (service: string, keyOrToken: string, extraConfig?: Record<string, string>) =>
+    postJSON<{ ok: boolean; configured: boolean }>("/api/settings/integrations", {
+      service,
+      key_or_token: keyOrToken,
+      extra_config: extraConfig,
+    }),
+  testConnection: (service: string, keyOrToken?: string) =>
+    postJSON<ConnectionTestResult>("/api/settings/test-connection", {
+      service,
+      key_or_token: keyOrToken,
+    }),
+  saveSchedulePreferences: (body: SchedulePreferences) =>
+    postJSON<{ ok: boolean }>("/api/settings/schedule-preferences", {
+      default_posting_time: body.defaultPostingTime,
+      auto_retry_failed: body.autoRetryFailed,
+    }),
+
+  // Mode A: Carousel Studio
   carouselGenerate: (body: {
     topic: string;
     audience: string;
@@ -334,6 +294,36 @@ export const api = {
     postJSON<CarouselProject>(`/carousel/projects/${id}/render`, {}),
   carouselDeleteProject: (id: string) => deleteJSON(`/carousel/projects/${id}`),
 
+  // Mode B: Podcast Clip Studio
+  transcript: (body: { url: string; langs?: string[] }) =>
+    postJSON<TranscriptResponse>("/transcript", body),
+  getTranscript: (url: string, langs?: string[]) =>
+    postJSON<TranscriptResponse>("/transcript", { url, langs }),
+  analyze: (body: {
+    topic?: string;
+    segments?: TranscriptSegment[];
+    transcript?: string;
+    maxSegments?: number;
+  }) => postJSON<{ segments: ViralSegment[] }>("/ai/analyze-transcript", body),
+  analyzeViral: (transcript: string) =>
+    postJSON<{ viralSegments: ViralSegment[] }>("/ai/viral-moments", { transcript }),
+  generateHooks: (transcript: string, title?: string) =>
+    postJSON<HooksResponse>("/ai/hooks-captions", { transcript, title }),
+  hooks: (body: { topic: string; style?: string }) =>
+    postJSON<HooksResponse>("/ai/hooks-captions", body),
+  clipsAsync: (body: unknown) => postJSON<{ job: string; status: string }>("/clips-async", body),
+  clipsSync: (body: unknown) => postJSON<{ job: string; clips: ClipResult[] }>("/clips", body),
+  clipsStatus: (job: string) =>
+    getJSON<{ job: string; status: string; clips: ClipResult[]; error?: string }>(
+      `/clips/status/${job}`
+    ),
+  generateClips: (
+    url: string,
+    clips: Array<{ id: string; start: number; end: number; title: string }>,
+    burnSubtitle = true
+  ) => postJSON<{ clips: ClipResult[] }>("/clips", { url, clips, burnSubtitle }),
+
+  // Mode C: Remake & Lipsync
   remakeUpload: (kind: "video" | "photo" | "audio", file: File) => {
     const body = new FormData();
     body.append("kind", kind);
@@ -342,7 +332,8 @@ export const api = {
   },
   remakeAssets: () => getJSON<{ assets: MediaAsset[] }>("/remake/assets"),
   remakeDeleteAsset: (id: string) => deleteJSON(`/remake/assets/${id}`),
-  museTalkStatus: () => getJSON<Record<string, unknown> & { ready: boolean }>("/remake/musetalk-status"),
+  museTalkStatus: () =>
+    getJSON<Record<string, unknown> & { ready: boolean }>("/remake/musetalk-status"),
   remakeStart: (body: {
     mediaId: string;
     audioId: string;
@@ -354,6 +345,7 @@ export const api = {
   }) => postJSON<RemakeJob>("/remake/jobs", body),
   remakeStatus: (job: string) => getJSON<RemakeJob>(`/remake/jobs/${job}`),
 
+  // Admin Panel
   adminOverview: () => getJSON<AdminOverview>("/admin/overview"),
   adminPlans: () => getJSON<{ plans: AdminPlan[] }>("/admin/plans"),
   adminCreatePlan: (body: unknown) => postJSON<AdminPlan>("/admin/plans", body),
@@ -366,7 +358,10 @@ export const api = {
   adminCreateMenu: (body: unknown) => postJSON<StudioMenu>("/admin/menus", body),
   adminUpdateMenu: (id: string, body: unknown) => putJSON<StudioMenu>(`/admin/menus/${id}`, body),
   adminDeleteMenu: (id: string) => deleteJSON(`/admin/menus/${id}`),
-  adminUsers: (q = "") => getJSON<{ users: AdminUser[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}`),
+  adminUsers: (q = "", page = 1, limit = 25) =>
+    getJSON<{ users: AdminUser[]; total: number; page?: number; limit?: number; totalPages?: number }>(
+      `/admin/users?page=${page}&limit=${limit}&search=${encodeURIComponent(q)}`
+    ),
   adminUpdateUser: (id: string, body: unknown) => putJSON<AdminUser>(`/admin/users/${id}`, body),
   mediaUrl,
 };

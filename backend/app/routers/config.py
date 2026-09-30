@@ -1,13 +1,16 @@
+from typing import Any, Dict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from ..core.responses import ApiResponse, success_response
 from ..db import models
 from ..db.base import get_db
+from ..repositories.menu_repo import MenuRepository
 
 router = APIRouter(prefix="/config", tags=["config"])
 
 
-def menu_out(row: models.StudioMenu) -> dict:
+def menu_out(row: models.StudioMenu) -> Dict[str, Any]:
     return {
         "id": row.id,
         "label": row.label,
@@ -21,12 +24,9 @@ def menu_out(row: models.StudioMenu) -> dict:
     }
 
 
-@router.get("/studio-menus")
+@router.get("/studio-menus", response_model=ApiResponse[Dict[str, Any]])
 def studio_menus(db: Session = Depends(get_db)):
-    rows = (
-        db.query(models.StudioMenu)
-        .filter(models.StudioMenu.is_enabled.is_(True))
-        .order_by(models.StudioMenu.sort_order.asc(), models.StudioMenu.id.asc())
-        .all()
-    )
-    return {"menus": [menu_out(row) for row in rows]}
+    repo = MenuRepository(db)
+    rows = repo.list_enabled()
+    return success_response(data={"menus": [menu_out(row) for row in rows]})
+

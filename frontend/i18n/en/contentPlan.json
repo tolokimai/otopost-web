@@ -1,0 +1,18 @@
+{
+  "roadmap_content_types": "Content types",
+  "format_carousel": "Carousel",
+  "format_podcast_clip": "Video Clip",
+  "format_remake": "Lip-sync",
+  "format_reels": "Reels",
+  "studio_plan_title": "Content Plan brief",
+  "studio_plan_meta": "Day {day} · {format}",
+  "studio_plan_save": "Save plan changes",
+  "studio_plan_saving": "Saving...",
+  "studio_plan_saved": "Plan updated.",
+  "studio_plan_save_error": "Could not update plan.",
+  "field_topic": "Topic",
+  "field_hook": "Hook",
+  "field_outline": "Outline",
+  "field_caption": "Caption",
+  "field_hashtags": "Hashtags"
+}
