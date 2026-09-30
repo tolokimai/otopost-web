@@ -237,7 +237,6 @@ export default function PodcastStudioPage() {
         </div>
       ) : null}
 
-<<<<<<< Updated upstream
       {plannerBrief ? (
         <div className="mb-4 rounded-xl border border-brand/30 bg-brand/10 p-4 text-sm">
           <div className="font-semibold text-brand-accent">Brief dari Content Library</div>
@@ -250,11 +249,6 @@ export default function PodcastStudioPage() {
         <p className="mb-3 text-sm text-slate-400">
           Tempel link YouTube podcast/panjang. Server yang unduh & transkrip.
         </p>
-=======
-      {/* Step 1: Input URL */}
-      <section className="mb-6 rounded-2xl border border-token bg-surface p-5 space-y-3">
-        <h2 className="text-sm font-bold text-token">1 · Sumber Video YouTube</h2>
->>>>>>> Stashed changes
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={url}

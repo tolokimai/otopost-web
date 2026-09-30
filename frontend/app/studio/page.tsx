@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth";
 import { useTranslation } from "@/lib/i18n";
 
 const FALLBACK: StudioMenu[] = [
-<<<<<<< Updated upstream
   { id: "persona", label: "Brand Persona", description: "Fondasi audiens, offer, tone, dan pilar konten.", icon: "🧬", href: "/personas", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 1 },
   { id: "content-plan", label: "Content Planner", description: "Kalender konten AI 7/30 hari dari persona.", icon: "🗓️", href: "/planner", isEnabled: true, isReady: true, requiredPlan: "creator", sortOrder: 2 },
   { id: "content-library", label: "Content Library", description: "Review, approval, produksi, jadwal, dan hasil.", icon: "🗂️", href: "/library", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 3 },
@@ -17,12 +16,6 @@ const FALLBACK: StudioMenu[] = [
   { id: "carousel", label: "Carousel", description: "Buat dan render carousel siap posting.", icon: "🖼️", href: "/studio/carousel", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 20 },
   { id: "self-video", label: "Video Sendiri", description: "Hook banner, subtitle, dan format vertikal.", icon: "🎥", href: "/studio/self-video", isEnabled: true, isReady: false, requiredPlan: "creator", sortOrder: 30 },
   { id: "ai-video", label: "Buat Video AI", description: "Generate video dari prompt dengan model AI.", icon: "✨", href: "/studio/ai-video", isEnabled: true, isReady: false, requiredPlan: "pro", sortOrder: 40 },
-=======
-  { id: "podcast", label: "Podcast Clip", description: "Ubah podcast panjang jadi klip vertikal viral.", icon: "✂️", href: "/studio/podcast", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 10 },
-  { id: "carousel", label: "Carousel", description: "Buat dan render carousel visual siap posting.", icon: "🖼️", href: "/studio/carousel", isEnabled: true, isReady: true, requiredPlan: "free", sortOrder: 20 },
-  { id: "self-video", label: "Video Sendiri", description: "Hook banner, subtitle dinamis, dan format vertikal.", icon: "🎥", href: "/studio/self-video", isEnabled: true, isReady: false, requiredPlan: "creator", sortOrder: 30 },
-  { id: "ai-video", label: "Buat Video AI", description: "Generate video dari teks dengan model AI terkini.", icon: "✨", href: "/studio/ai-video", isEnabled: true, isReady: false, requiredPlan: "pro", sortOrder: 40 },
->>>>>>> Stashed changes
   { id: "remake", label: "Remake & Lipsync", description: "Remake video dan true lipsync MuseTalk 1.5.", icon: "👄", href: "/studio/remake", isEnabled: true, isReady: true, requiredPlan: "creator", sortOrder: 50 },
 ];
 
@@ -40,23 +33,11 @@ export default function StudioHub() {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-24 text-token">
       <Header />
-<<<<<<< Updated upstream
       <section className="py-10">
         <div className="text-sm font-semibold text-brand-accent">CONTENT PRODUCTION OS</div>
         <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">Pilih workflow Studio</h1>
         <p className="mt-3 max-w-2xl text-slate-400">
           Mulai dari Persona, rencanakan konten, approve di Library, lalu produksi lewat workflow Studio. Susunan serta akses menu dikendalikan admin tanpa redeploy.
-=======
-      <section className="py-12">
-        <div className="text-xs font-bold uppercase tracking-wider text-brand">
-          Content Production OS
-        </div>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {t("studio.hub_title")}
-        </h1>
-        <p className="mt-3 max-w-2xl text-muted text-sm sm:text-base leading-relaxed">
-          {t("studio.hub_desc")}. Seluruh susunan alur kerja dan konfigurasi dikelola dinamis tanpa redeploy.
->>>>>>> Stashed changes
         </p>
       </section>
 

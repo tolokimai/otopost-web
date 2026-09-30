@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -56,7 +57,18 @@ class Persona(Base):
         String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    brand_name: Mapped[str] = mapped_column(String(160), default="")
     niche: Mapped[str] = mapped_column(String(160), default="")
+    audience: Mapped[str] = mapped_column(Text, default="")
+    pain_points_json: Mapped[str] = mapped_column(Text, default="[]")
+    aspirations_json: Mapped[str] = mapped_column(Text, default="[]")
+    tone: Mapped[str] = mapped_column(String(240), default="Profesional, hangat, dan jelas")
+    language: Mapped[str] = mapped_column(String(40), default="Bahasa Indonesia")
+    offers_json: Mapped[str] = mapped_column(Text, default="[]")
+    channels_json: Mapped[str] = mapped_column(Text, default="[]")
+    differentiators: Mapped[str] = mapped_column(Text, default="")
+    brand_story: Mapped[str] = mapped_column(Text, default="")
+    content_pillars_json: Mapped[str] = mapped_column(Text, default="[]")
     tone_of_voice: Mapped[str] = mapped_column(Text, default="")
     target_audience: Mapped[str] = mapped_column(Text, default="")
     signature_hook: Mapped[str] = mapped_column(Text, default="")
@@ -64,6 +76,9 @@ class Persona(Base):
     donts: Mapped[str] = mapped_column(Text, default="")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ContentPlan(Base):
@@ -76,9 +91,15 @@ class ContentPlan(Base):
     persona_id: Mapped[Optional[str]] = mapped_column(
         String(32), ForeignKey("personas.id", ondelete="SET NULL"), index=True, nullable=True
     )
+    title: Mapped[str] = mapped_column(String(180), default="")
+    goal: Mapped[str] = mapped_column(String(240), default="Pertumbuhan audiens dan konversi")
+    campaign: Mapped[str] = mapped_column(String(240), default="")
+    duration_days: Mapped[int] = mapped_column(Integer, default=7)
+    start_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
+    strategy_json: Mapped[str] = mapped_column(Text, default="{}")
     day_number: Mapped[int] = mapped_column(Integer, default=1)
     scheduled_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    topic: Mapped[str] = mapped_column(Text, nullable=False)
+    topic: Mapped[str] = mapped_column(Text, default="")
     hook: Mapped[str] = mapped_column(Text, default="")
     outline: Mapped[str] = mapped_column(Text, default="")
     format: Mapped[str] = mapped_column(String(32), default="CAROUSEL")
@@ -86,6 +107,9 @@ class ContentPlan(Base):
     caption: Mapped[str] = mapped_column(Text, default="")
     hashtags: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Credential(Base):
@@ -252,4 +276,92 @@ class AuditLog(Base):
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     detail_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class SystemMeta(Base):
+    __tablename__ = "system_meta"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ContentItem(Base):
+    __tablename__ = "content_items"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    plan_id: Mapped[Optional[str]] = mapped_column(
+        String(32), ForeignKey("content_plans.id", ondelete="SET NULL"), index=True
+    )
+    persona_id: Mapped[Optional[str]] = mapped_column(
+        String(32), ForeignKey("personas.id", ondelete="SET NULL"), index=True
+    )
+    scheduled_date: Mapped[Optional[datetime]] = mapped_column(Date, index=True)
+    channel: Mapped[str] = mapped_column(String(40), default="Instagram")
+    format: Mapped[str] = mapped_column(String(80), default="Carousel")
+    pillar: Mapped[str] = mapped_column(String(160), default="")
+    title: Mapped[str] = mapped_column(String(220), nullable=False)
+    hook: Mapped[str] = mapped_column(Text, default="")
+    angle: Mapped[str] = mapped_column(Text, default="")
+    objective: Mapped[str] = mapped_column(String(160), default="Awareness")
+    cta: Mapped[str] = mapped_column(Text, default="")
+    brief: Mapped[str] = mapped_column(Text, default="")
+    keywords_json: Mapped[str] = mapped_column(Text, default="[]")
+    workflow: Mapped[str] = mapped_column(String(40), default="carousel", index=True)
+    status: Mapped[str] = mapped_column(String(24), default="draft", index=True)
+    source_project_id: Mapped[Optional[str]] = mapped_column(String(32))
+    output_url: Mapped[str] = mapped_column(Text, default="")
+    external_post_id: Mapped[str] = mapped_column(String(255), default="")
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class PostSchedule(Base):
+    __tablename__ = "post_schedules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    content_plan_id: Mapped[Optional[str]] = mapped_column(
+        String(32), ForeignKey("content_plans.id", ondelete="SET NULL"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(220), nullable=False)
+    format: Mapped[str] = mapped_column(String(32), default="CAROUSEL")
+    media_url: Mapped[str] = mapped_column(Text, default="")
+    caption: Mapped[str] = mapped_column(Text, default="")
+    hashtags: Mapped[str] = mapped_column(Text, default="")
+    platforms_json: Mapped[str] = mapped_column(Text, default='["instagram"]')
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="PENDING", index=True)
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    posted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PostingLog(Base):
+    __tablename__ = "posting_logs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    post_schedule_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("post_schedules.id", ondelete="CASCADE"), index=True
+    )
+    platform: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, default=0)
+    response_detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

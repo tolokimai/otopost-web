@@ -30,5 +30,24 @@ class PaginatedResult(BaseModel, Generic[T]):
     total: int
     page: int
     limit: int
-    pages: int
+    total_pages: int
     has_more: bool
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        items: List[T],
+        total: int,
+        page: int,
+        limit: int,
+    ) -> "PaginatedResult[T]":
+        pages = (total + limit - 1) // limit if total else 0
+        return cls(
+            items=items,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=pages,
+            has_more=page < pages,
+        )

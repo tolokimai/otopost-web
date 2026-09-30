@@ -8,7 +8,13 @@ import { studioApi } from "./api/studio";
 import { mediaUrl } from "./http/client";
 
 export * from "./types";
-export { ApiError, getAuthToken, mediaUrl, setAuthToken } from "./http/client";
+export {
+  ApiError,
+  getAuthToken,
+  getToken,
+  mediaUrl,
+  setAuthToken,
+} from "./http/client";
 
 export const api = {
   ...authApi,

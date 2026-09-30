@@ -26,6 +26,8 @@ export function getAuthToken(): string | null {
   return typeof window === "undefined" ? null : window.localStorage.getItem(TOKEN_KEY);
 }
 
+export const getToken = getAuthToken;
+
 export function mediaUrl(pathOrUrl?: string | null): string {
   if (!pathOrUrl) return "";
   if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
