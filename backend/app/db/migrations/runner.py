@@ -6,6 +6,7 @@ from sqlalchemy.engine import Engine
 
 MIGRATION_MODULES: tuple[str, ...] = (
     "app.db.migrations.versions.v0001_legacy_columns",
+    "app.db.migrations.versions.v0002_content_domain_unification",
 )
 
 
