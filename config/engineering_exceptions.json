@@ -1,0 +1,6 @@
+{
+  "line_limit": [
+    "frontend/app/studio/podcast/page.tsx"
+  ],
+  "policy": "Temporary exception owned by frontend lead. The podcast page is 430 lines after conflict repair and must be split by 2026-10-31. No other production source file may exceed 400 lines."
+}

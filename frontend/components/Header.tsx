@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-<<<<<<< Updated upstream
 import { useEffect, useState } from "react";
 
 import { api, type StudioMenu } from "@/lib/api";
-=======
->>>>>>> Stashed changes
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { useTranslation } from "@/lib/i18n";
@@ -15,7 +12,6 @@ const CONTENT_ENGINE_IDS = new Set(["persona", "content-plan", "content-library"
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
-<<<<<<< Updated upstream
   const [engineMenus, setEngineMenus] = useState<StudioMenu[]>([]);
 
   useEffect(() => {
@@ -27,10 +23,8 @@ export default function Header() {
       .then((data) => setEngineMenus(data.menus.filter((menu) => CONTENT_ENGINE_IDS.has(menu.id) && menu.isReady)))
       .catch(() => setEngineMenus([]));
   }, [user]);
-=======
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { locale, setLocale, t } = useTranslation();
->>>>>>> Stashed changes
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 py-5 border-b border-token mb-6">
@@ -50,15 +44,11 @@ export default function Header() {
         <Link href="/pricing" className="text-token-muted hover:text-token transition-colors">
           {t("billing.pricing_title").split(" ")[0]}
         </Link>
-<<<<<<< Updated upstream
         {!loading && user ? engineMenus.map((menu) => (
           <Link key={menu.id} href={menu.href} className="text-slate-300 hover:text-white">
             {menu.label}
           </Link>
         )) : null}
-=======
-
->>>>>>> Stashed changes
         {loading ? null : user ? (
           <>
             {user.isAdmin ? (

@@ -1,6 +1,5 @@
 # API Specification & Contract
 
-<<<<<<< Updated upstream
 Base URL local: `http://localhost:5000`. JSON endpoints use `Authorization: Bearer <JWT>` where required.
 
 ## Public/auth
@@ -76,10 +75,6 @@ Slide: `{headline,body,subtext,imageBase64?}`. Rasio: `1:1`, `4:5`, `3:4`, `9:16
 - `GET /remake/jobs/{job}`
 
 Contoh job:
-=======
-## Standard Response Format
-All responses must strictly adhere to the following JSON schemas:
->>>>>>> Stashed changes
 
 ### Success Response
 ```json
